@@ -1,0 +1,22 @@
+[package]
+name = "tesis-vk"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+vulkano = "0.32"
+egui_winit_vulkano = "0.23.0"
+bytemuck = "1.12.1"
+vulkano-shaders = "0.32"
+egui = "0.20.1"
+egui-winit = "0.20.1"
+image = "0.24"
+rand = "0.8.5"
+winit = "0.27.5"
+vulkano-util = "0.32"
+egui_demo_lib = "0.20"
+
+[profile.dev]
+opt-level = 1
