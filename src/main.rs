@@ -39,7 +39,7 @@ fn main() {
                         app.min_width,
                         &mut app.panel_width,
                         window_width,
-                        &mut app.pipeline.viewport_width,
+                        &mut app.pipeline.vk_ratio,
                         &mut code,
                         &mut console,
                         gui);
