@@ -70,7 +70,7 @@ impl Application{
         self.panel_width = self.windows.get_primary_window().unwrap().inner_size().width as f32 / 4.0;
     }
 
-    pub fn gui_panel(min_width: f32, panel_width: &mut f32, window_width: f32, viewport_width: &mut f32, code: &mut String, console: &mut String, gui: &mut Gui){
+    pub fn gui_panel(min_width: f32, panel_width: &mut f32, window_width: f32, vk_ratio: &mut f32, code: &mut String, console: &mut String, gui: &mut Gui){
         let ctx = gui.context();
         egui::SidePanel::right("Panel").resizable(true).show(&ctx, |ui| {
             let font = egui::FontId { size: 14.0, family: egui::FontFamily::Monospace };
@@ -91,8 +91,7 @@ impl Application{
             Self::lower_panel(console, ui);
             if *panel_width != ui.available_width(){
                 *panel_width = ui.available_width();
-                *viewport_width = 1.0 - (*panel_width / window_width) * 2.0;
-                println!("{}", *viewport_width);
+                *vk_ratio = 1.0 - (*panel_width / window_width) * 2.0;
             }
         });
     }

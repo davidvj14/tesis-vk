@@ -45,7 +45,7 @@ pub struct MSAAPipeline{
     intermediary: Arc<ImageView<AttachmentImage>>,
     vertex_buffer: Arc<CpuAccessibleBuffer<[Vertex]>>,
     command_buffer_allocator: StandardCommandBufferAllocator,
-    pub viewport_width: f32,
+    pub vk_ratio: f32,
 }
 
 impl MSAAPipeline{
@@ -88,7 +88,7 @@ impl MSAAPipeline{
             intermediary,
             vertex_buffer,
             command_buffer_allocator,
-            viewport_width: 0.75,
+            vk_ratio: 0.75,
         }
     }
 
@@ -168,7 +168,7 @@ impl MSAAPipeline{
 
         let dimensions = image.image().dimensions().width_height();
         let mut vk_dimensions = dimensions;
-        vk_dimensions[0] = (vk_dimensions[0] as f32 * self.viewport_width) as u32;
+        vk_dimensions[0] = (vk_dimensions[0] as f32 * self.vk_ratio) as u32;
 
         if dimensions != self.intermediary.dimensions().width_height(){
             self.intermediary = ImageView::new_default(
