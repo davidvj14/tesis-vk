@@ -1692,6 +1692,7 @@ dependencies = [
  "egui_demo_lib",
  "egui_winit_vulkano",
  "image",
+ "nom",
  "rand",
  "vulkano",
  "vulkano-shaders",

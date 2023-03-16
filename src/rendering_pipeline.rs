@@ -64,9 +64,9 @@ impl MSAAPipeline{
                 BufferUsage { vertex_buffer: true, ..BufferUsage::empty() },
                 false,
                 [
-                    Vertex { position: [-0.5, -0.25], color: [1.0, 0.0, 0.0, 1.0] },
-                    Vertex { position: [0.0, 0.5], color: [0.0, 1.0, 0.0, 1.0] },
-                    Vertex { position: [0.25, -0.1], color: [0.0, 0.0, 1.0, 1.0] },
+                    Vertex { position: [-1.0, -0.25], color: [1.0, 0.0, 0.0, 1.0] },
+                    Vertex { position: [0.0, 1.0], color: [0.0, 1.0, 0.0, 1.0] },
+                    Vertex { position: [1.0, -0.1], color: [0.0, 0.0, 1.0, 1.0] },
                 ]
                 .iter()
                 .cloned(),
@@ -88,7 +88,7 @@ impl MSAAPipeline{
             intermediary,
             vertex_buffer,
             command_buffer_allocator,
-            vk_ratio: 0.75,
+            vk_ratio: 1.0,
         }
     }
 
@@ -213,7 +213,7 @@ impl MSAAPipeline{
             .bind_pipeline_graphics(self.pipeline.clone())
             .set_viewport(0, vec![Viewport{
                 origin: [0.0, 0.0],
-                dimensions: [vk_dimensions[0] as f32, dimensions[1] as f32],
+                dimensions: [vk_dimensions[0] as f32, vk_dimensions[1] as f32],
                 depth_range: 0.0..1.0,
             }])
             .bind_vertex_buffers(0, self.vertex_buffer.clone())

@@ -54,7 +54,7 @@ impl Application{
             );
 
         let panel_width = windows.get_primary_window().unwrap().inner_size().width as f32 / 2.0;
-        let min_width = panel_width / 4.0;
+        let min_width = panel_width / 2.0;
 
         Application {
             context,
@@ -67,7 +67,7 @@ impl Application{
     }
 
     pub fn resize(&mut self){
-        self.panel_width = self.windows.get_primary_window().unwrap().inner_size().width as f32 / 4.0;
+        self.panel_width = self.windows.get_primary_window().unwrap().inner_size().width as f32 / 2.0;
     }
 
     pub fn gui_panel(min_width: f32, panel_width: &mut f32, window_width: f32, vk_ratio: &mut f32, code: &mut String, console: &mut String, gui: &mut Gui){
@@ -91,7 +91,8 @@ impl Application{
             Self::lower_panel(console, ui);
             if *panel_width != ui.available_width(){
                 *panel_width = ui.available_width();
-                *vk_ratio = 1.0 - (*panel_width / window_width) * 2.0;
+                *vk_ratio = 1.0 - (*panel_width / window_width) * 1.0;
+                println!("{} {} {}", *panel_width, window_width, *vk_ratio);
             }
         });
     }

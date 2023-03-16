@@ -1,9 +1,12 @@
 mod ui;
+mod syntax;
+mod parser;
 mod rendering_pipeline;
 use ui::Application;
 use winit::{
     event::{Event, WindowEvent}, event_loop::{ControlFlow, EventLoop},
 };
+use parser::Parser;
 
 fn main() {
     let event_loop = EventLoop::new();
@@ -11,6 +14,8 @@ fn main() {
 
     let mut code = CODE.to_string();
     let mut console = CONSOLE.to_string();
+    let mut parser = Parser::new(&code);
+    parser.parens();
     event_loop.run(move |event, _, control_flow| {
         let window_width = app.windows.get_primary_window().unwrap().inner_size().width as f32;
         let renderer = app.windows.get_primary_renderer_mut().unwrap();
@@ -56,8 +61,6 @@ fn main() {
     });
 }
 
-const CODE: &str = r#"
-(a (b (c d)))
-"#;
+const CODE: &str = r#"(a (b (c d)))"#;
 
 const CONSOLE: &str = "vk-repl> ";
