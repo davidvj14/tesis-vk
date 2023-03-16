@@ -1,4 +1,4 @@
-use egui::{TextEdit, TextStyle, Ui};
+use egui::{TextEdit, TextStyle, Ui, ScrollArea};
 use egui_winit_vulkano::{Gui, GuiConfig};
 use winit::event_loop::EventLoop;
 use vulkano_util::{
@@ -18,6 +18,7 @@ pub struct Application{
     pub pipeline: MSAAPipeline,
     pub gui: Gui,
     pub panel_width: f32,
+    pub min_width: f32,
 }
 
 impl Application{
@@ -53,13 +54,15 @@ impl Application{
             );
 
         let panel_width = windows.get_primary_window().unwrap().inner_size().width as f32 / 2.0;
+        let min_width = panel_width / 4.0;
 
         Application {
             context,
             windows,
             pipeline,
             gui,
-            panel_width
+            panel_width,
+            min_width,
         }
     }
 
@@ -67,31 +70,47 @@ impl Application{
         self.panel_width = self.windows.get_primary_window().unwrap().inner_size().width as f32 / 4.0;
     }
 
-    pub fn gui_panel(panel_width: f32, code: &mut String, console: &mut String, gui: &mut Gui){
+    pub fn gui_panel(min_width: f32, panel_width: &mut f32, window_width: f32, viewport_width: &mut f32, code: &mut String, console: &mut String, gui: &mut Gui){
         let ctx = gui.context();
         egui::SidePanel::right("Panel").resizable(true).show(&ctx, |ui| {
-            ui.set_width(panel_width);
-            ui.add(TextEdit::multiline(code)
-                .font(TextStyle::Monospace)
-                .desired_width(panel_width)
-                .desired_rows(25));
+            let font = egui::FontId { size: 14.0, family: egui::FontFamily::Monospace };
+            let row_height = ui.fonts().row_height(&font);
+            let editor_height = ui.available_height() / 2.0;
+            let editor_rows = editor_height / row_height;
+            ui.set_min_width(min_width);
+            ScrollArea::vertical()
+                .max_height(ui.available_height() / 2.0)
+                .show_rows(ui, row_height, editor_rows as usize - 5, |ui, _| {
+                    ui.add(TextEdit::multiline(code)
+                        .font(font)
+                        .desired_width(ui.available_width())
+                        .desired_rows(editor_rows as usize)
+                        );
+                });
             ui.separator();
             Self::lower_panel(console, ui);
+            if *panel_width != ui.available_width(){
+                *panel_width = ui.available_width();
+                *viewport_width = 1.0 - (*panel_width / window_width) * 2.0;
+                println!("{}", *viewport_width);
+            }
         });
     }
 
     fn lower_panel(console: &mut String, ui: &mut Ui){
         ui.columns(2, |columns| {
+            columns[0].set_height(columns[0].available_height());
             columns[0].add(
                 TextEdit::multiline(console)
                 .font(TextStyle::Monospace)
-                .desired_rows(24)
+                .desired_rows(columns[0].available_height() as usize / 14)
                 );
             columns[1].add(
                 TextEdit::multiline(&mut "err".to_string())
                 .font(TextStyle::Monospace)
-                .desired_rows(24)
+                .desired_rows(columns[1].available_height() as usize / 14)
                 );
         });
+        ui.set_height(ui.available_height());
     }
 }

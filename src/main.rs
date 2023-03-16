@@ -12,6 +12,7 @@ fn main() {
     let mut code = CODE.to_string();
     let mut console = CONSOLE.to_string();
     event_loop.run(move |event, _, control_flow| {
+        let window_width = app.windows.get_primary_window().unwrap().inner_size().width as f32;
         let renderer = app.windows.get_primary_renderer_mut().unwrap();
         match event{
             Event::WindowEvent { event, window_id} if window_id == renderer.window().id() => {
@@ -34,7 +35,14 @@ fn main() {
             }
             Event::RedrawRequested(window_id) if window_id == window_id => {
                 app.gui.immediate_ui(|gui|{
-                    Application::gui_panel(app.panel_width, &mut code, &mut console, gui);
+                    Application::gui_panel(
+                        app.min_width,
+                        &mut app.panel_width,
+                        window_width,
+                        &mut app.pipeline.viewport_width,
+                        &mut code,
+                        &mut console,
+                        gui);
                 });
                 let before_future = renderer.acquire().unwrap();
                 let after_future = app.pipeline.render(before_future, renderer.swapchain_image_view(), &mut app.gui);
