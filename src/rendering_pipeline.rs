@@ -1,4 +1,3 @@
-use bytemuck::{Pod, Zeroable};
 use egui_winit_vulkano::Gui;
 use std::{
     sync::Arc,
@@ -27,14 +26,9 @@ use vulkano::{
     sync::GpuFuture,
 };
 use vulkano_util::renderer::SwapchainImageView;
+use crate::syntax::Vertex;
 
-#[repr(C)]
-#[derive(Default, Debug, Copy, Clone, Zeroable, Pod)]
-struct Vertex{
-    position: [f32; 2],
-    color: [f32; 4],
-}
-vulkano::impl_vertex!(Vertex, position, color);
+
 
 pub struct MSAAPipeline{
     allocator: Arc<StandardMemoryAllocator>,
@@ -43,7 +37,7 @@ pub struct MSAAPipeline{
     pipeline: Arc<GraphicsPipeline>,
     subpass: Subpass,
     intermediary: Arc<ImageView<AttachmentImage>>,
-    vertex_buffer: Arc<CpuAccessibleBuffer<[Vertex]>>,
+    pub vertex_buffer: Arc<CpuAccessibleBuffer<[Vertex]>>,
     command_buffer_allocator: StandardCommandBufferAllocator,
     pub vk_ratio: f32,
 }
@@ -64,9 +58,9 @@ impl MSAAPipeline{
                 BufferUsage { vertex_buffer: true, ..BufferUsage::empty() },
                 false,
                 [
-                    Vertex { position: [-1.0, -0.25], color: [1.0, 0.0, 0.0, 1.0] },
-                    Vertex { position: [0.0, 1.0], color: [0.0, 1.0, 0.0, 1.0] },
-                    Vertex { position: [1.0, -0.1], color: [0.0, 0.0, 1.0, 1.0] },
+                    Vertex { position: [-1.0, -0.25, 0.0], color: [1.0, 0.0, 0.0, 1.0] },
+                    Vertex { position: [0.0, 1.0, 0.0], color: [0.0, 1.0, 0.0, 1.0] },
+                    Vertex { position: [1.0, -0.1, 0.0], color: [0.0, 0.0, 1.0, 1.0] },
                 ]
                 .iter()
                 .cloned(),
@@ -90,6 +84,21 @@ impl MSAAPipeline{
             command_buffer_allocator,
             vk_ratio: 1.0,
         }
+    }
+
+    pub fn set_vertex_buffer(&mut self, vb: Vec<Vertex>){
+        let vertex_buffer = {
+            CpuAccessibleBuffer::from_iter(
+                &self.allocator,
+                BufferUsage { vertex_buffer: true, ..BufferUsage::empty() },
+                false,
+                vb
+                .iter()
+                .cloned(),
+                )
+                .expect("failed to create buffer")
+        };
+        self.vertex_buffer = vertex_buffer;
     }
 
     fn create_render_pass(
@@ -240,11 +249,11 @@ mod vs {
         ty: "vertex",
         src: "
 #version 450
-layout(location = 0) in vec2 position;
+layout(location = 0) in vec3 position;
 layout(location = 1) in vec4 color;
 layout(location = 0) out vec4 v_color;
 void main() {
-    gl_Position = vec4(position, 0.0, 1.0);
+    gl_Position = vec4(position, 1.0);
     v_color = color;
 }"
     }

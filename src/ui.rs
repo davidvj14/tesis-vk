@@ -17,8 +17,6 @@ pub struct Application{
     pub windows: VulkanoWindows,
     pub pipeline: MSAAPipeline,
     pub gui: Gui,
-    pub panel_width: f32,
-    pub min_width: f32,
 }
 
 impl Application{
@@ -53,31 +51,22 @@ impl Application{
             },
             );
 
-        let panel_width = windows.get_primary_window().unwrap().inner_size().width as f32 / 2.0;
-        let min_width = panel_width / 2.0;
-
         Application {
             context,
             windows,
             pipeline,
             gui,
-            panel_width,
-            min_width,
         }
     }
 
-    pub fn resize(&mut self){
-        self.panel_width = self.windows.get_primary_window().unwrap().inner_size().width as f32 / 2.0;
-    }
-
-    pub fn gui_panel(min_width: f32, panel_width: &mut f32, window_width: f32, vk_ratio: &mut f32, code: &mut String, console: &mut String, gui: &mut Gui){
+    pub fn gui_panel(app_info: &mut AppInfo, vk_ratio: &mut f32, code: &mut String, console: &mut String, gui: &mut Gui){
         let ctx = gui.context();
         egui::SidePanel::right("Panel").resizable(true).show(&ctx, |ui| {
             let font = egui::FontId { size: 14.0, family: egui::FontFamily::Monospace };
             let row_height = ui.fonts().row_height(&font);
             let editor_height = ui.available_height() / 2.0;
             let editor_rows = editor_height / row_height;
-            ui.set_min_width(min_width);
+            ui.set_min_width(app_info.min_width);
             ScrollArea::vertical()
                 .max_height(ui.available_height() / 2.0)
                 .show_rows(ui, row_height, editor_rows as usize - 5, |ui, _| {
@@ -89,10 +78,9 @@ impl Application{
                 });
             ui.separator();
             Self::lower_panel(console, ui);
-            if *panel_width != ui.available_width(){
-                *panel_width = ui.available_width();
-                *vk_ratio = 1.0 - (*panel_width / window_width) * 1.0;
-                println!("{} {} {}", *panel_width, window_width, *vk_ratio);
+            if app_info.panel_width != ui.available_width() + 20.0 {
+                app_info.panel_width = ui.available_width() + 20.0;
+                *vk_ratio = 1.0 - (app_info.panel_width / app_info.window_size[0]) * app_info.scale_factor as f32;
             }
         });
     }
@@ -112,5 +100,32 @@ impl Application{
                 );
         });
         ui.set_height(ui.available_height());
+    }
+}
+
+pub struct AppInfo{
+    window_size: [f32; 2],
+    panel_width: f32,
+    min_width: f32,
+    scale_factor: f64,
+}
+
+impl AppInfo{
+    pub fn new(window_size: [f32; 2], panel_width: f32, min_width: f32, scale_factor: f64) -> Self {
+        AppInfo{
+            window_size,
+            panel_width,
+            min_width,
+            scale_factor,
+        }
+    }
+
+    pub fn resize(&mut self, window_size: [f32; 2]){
+        self.window_size = window_size;
+        self.panel_width = window_size[0] as f32 / 4.0;
+    }
+
+    pub fn rescale(&mut self, scale_factor: f64){
+        self.scale_factor = scale_factor;
     }
 }
