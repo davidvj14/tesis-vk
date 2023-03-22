@@ -23,14 +23,12 @@ fn main() {
         );
     let mut code = CODE.to_string();
     let mut console = CONSOLE.to_string();
-    let mut parser = Parser::new(CODE);
-    parser.parse();
-    println!("{:?}", parser.cmds);
-    let mut interpreter = Interpreter::new(&parser.cmds, &mut app.pipeline);
-    interpreter.interpret();
-    println!("{:?} \n {:?}", interpreter.vertex_bindings, interpreter.vb_bindings);
     event_loop.run(move |event, _, control_flow| {
         let renderer = app.windows.get_primary_renderer_mut().unwrap();
+        let mut parser = Parser::new(&code);
+        parser.parse();
+        let mut interpreter = Interpreter::new(&parser.cmds, &mut app.pipeline);
+        interpreter.interpret();
         match event{
             Event::WindowEvent { event, window_id} if window_id == renderer.window().id() => {
                 let _pass = !app.gui.update(&event);
