@@ -71,18 +71,27 @@ fn main() {
     });
 }
 
-const CODE: &str = r#"
-(def-vertex v1
+const CODE: &str = 
+r#"(def-vertex v1
     (pos (x -0.75) (y -1) (z 1))
     (color #FF0000FF))
 (def-vertex v2
-    (pos (x 0.25) (y 0.5) (z 1))
+    (pos (x -0.25) (y -0.5) (z 1))
     (color #00FF00FF))
 (def-vertex v3
+    (pos (x -0.75) (y -0.25) (z 1))
+    (color #0000FFFF))
+(def-vertex v4
+    (pos (x 0.75) (y 1) (z 1))
+    (color #FF0000FF))
+(def-vertex v5
+    (pos (x 0.25) (y 0.5) (z 1))
+    (color #00FF00FF))
+(def-vertex v6
     (pos (x 0.75) (y 0.25) (z 1))
     (color #0000FFFF))
 (mk-vertex-buffer vb1
-    (v1 v2 v3))
+    (v1 v2 v3 v4 v5 v6))
 (draw vb1)
 "#;
 

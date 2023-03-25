@@ -118,17 +118,17 @@ impl Parser{
             let input = Parser::space(src);
             let (input, _) = tag("def-vertex")(input)?;
             let input = Parser::space(input);
-            let (input, name) =
-                take_while1::<_, _, ()>(is_alphanumeric)(input.as_bytes())
-                .expect("");
-            let input = from_utf8(input).unwrap();
-            let name = from_utf8(name).unwrap();
-            let input = Parser::space(input);
-            let (input, position) = Self::parse_pos(input)?;
-            let input = Parser::space(input);
-            let (input, color) = Parser::parse_color(input)?;
-            let vertex = Vertex { position, color };
-            Ok((input, DefVertex(name.to_string(), vertex)))
+            if let Ok((input, name)) = take_while1::<_, _, ()>(is_alphanumeric)(input.as_bytes()){
+                let input = from_utf8(input).unwrap();
+                let name = from_utf8(name).unwrap();
+                let input = Parser::space(input);
+                let (input, position) = Self::parse_pos(input)?;
+                let input = Parser::space(input);
+                let (input, color) = Parser::parse_color(input)?;
+                let vertex = Vertex { position, color };
+                return Ok((input, DefVertex(name.to_string(), vertex)));
+            }
+            Err((nom::Err::Incomplete(nom::Needed::Unknown)))
         })
     }
 
@@ -142,16 +142,17 @@ impl Parser{
             let input = Parser::space(src);
             let (rest, input) = take_until1::<_, _, ()>(")")(input).unwrap();
             let input = input.to_string() + " ";
-            let (_, verts) = 
-                separated_list1(
-                    Parser::space_consumer,
-                    take_while1::<_, _, ()>(is_alphanumeric)
-                    )(&input.as_bytes()).unwrap();
-            let mut vec_verts : Vec<String> = Vec::new();
-            for vert in verts{
-                vec_verts.push(from_utf8(vert).unwrap().to_string());
+            if let Ok((_, verts)) = separated_list1(
+                Parser::space_consumer,
+                take_while1::<_, _, ()>(is_alphanumeric)
+                )(&input.as_bytes()){
+                let mut vec_verts : Vec<String> = Vec::new();
+                for vert in verts{
+                    vec_verts.push(from_utf8(vert).unwrap().to_string());
+                }
+                return Ok((rest, vec_verts));
             }
-            Ok((rest, vec_verts))
+            Err((nom::Err::Incomplete(nom::Needed::Unknown)))
         })
     }
 
@@ -161,15 +162,16 @@ impl Parser{
             let input = Parser::space(src);
             let (input, _) = tag("mk-vertex-buffer")(input)?;
             let input = Parser::space(input);
-            let (input, name) =
-                take_while1::<_, _, ()>(is_alphanumeric)(input.as_bytes())
-                .expect("");
-            let input = Parser::space(from_utf8(input).unwrap());
-            let name = from_utf8(name).unwrap();
-            let (input, verts) = Parser::parse_vertices_list(input).unwrap();
-            let vb : Box<Vec<String>> = Box::new(verts);
-            Ok((input,
-                    MkVertexBuffer(name.to_string(), vb)))
+            if let Ok((input, name)) = take_while1::<_, _, ()>(is_alphanumeric)(input.as_bytes()){
+                let input = Parser::space(from_utf8(input).unwrap());
+                let name = from_utf8(name).unwrap();
+                if let Ok((input, verts)) = Parser::parse_vertices_list(input){
+                    let vb : Box<Vec<String>> = Box::new(verts);
+                    return Ok((input,
+                            MkVertexBuffer(name.to_string(), vb)));
+                }
+            }
+            Err((nom::Err::Incomplete(nom::Needed::Unknown)))
         })
     }
 
@@ -179,12 +181,12 @@ impl Parser{
             let input = Parser::space(src);
             let (input, _) = tag("draw")(input)?;
             let input = Parser::space(input);
-            let (input, name) =
-                take_while1::<_, _, ()>(is_alphanumeric)(input.as_bytes())
-                .expect("");
-            let input = Parser::space(from_utf8(input).unwrap());
-            let name = from_utf8(name).unwrap().to_string();
-            Ok((input, Draw(name)))
+            if let Ok((input, name)) = take_while1::<_, _, ()>(is_alphanumeric)(input.as_bytes()){
+                let input = Parser::space(from_utf8(input).unwrap());
+                let name = from_utf8(name).unwrap().to_string();
+                return Ok((input, Draw(name)));
+            }
+            Err((nom::Err::Incomplete(nom::Needed::Unknown)))
         })
     }
 }

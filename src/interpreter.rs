@@ -31,13 +31,16 @@ impl<'a> Interpreter<'a>{
                 MkVertexBuffer(name, vb) => {
                     let mut vert_buf: Vec<Vertex> = Vec::new();
                     for v in &**vb{
-                        vert_buf.push(*self.vertex_bindings.get(v).unwrap());
+                        if let (Some(vert)) = self.vertex_bindings.get(v){
+                            vert_buf.push(*vert);
+                        }
                     }
                     self.vb_bindings.insert(name.to_string(), vert_buf);
                 },
                 Draw(name) => {
-                    let vb: Vec<Vertex> = self.vb_bindings.get(name).unwrap().clone();
-                    self.pipeline.set_vertex_buffer(vb);
+                    if let Some(vb) = self.vb_bindings.get(name){
+                        self.pipeline.set_vertex_buffer(vb.to_vec());
+                    }
                 },
                 _ => (),
             };

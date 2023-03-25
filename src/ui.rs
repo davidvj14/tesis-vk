@@ -64,12 +64,13 @@ impl Application{
         egui::SidePanel::right("Panel").resizable(true).show(&ctx, |ui| {
             let font = egui::FontId { size: 14.0, family: egui::FontFamily::Monospace };
             let row_height = ui.fonts().row_height(&font);
-            let editor_height = ui.available_height() / 2.0;
+            let editor_height = ui.available_height() / 1.5;
             let editor_rows = editor_height / row_height;
             ui.set_min_width(app_info.min_width);
             ScrollArea::vertical()
-                .max_height(ui.available_height() / 2.0)
+                .max_height(ui.available_height() / 1.5)
                 .show_rows(ui, row_height, editor_rows as usize - 5, |ui, _| {
+                    ui.set_height(ui.available_height());
                     ui.add(TextEdit::multiline(code)
                         .font(font)
                         .desired_width(ui.available_width())
@@ -93,13 +94,14 @@ impl Application{
                 .font(TextStyle::Monospace)
                 .desired_rows(columns[0].available_height() as usize / 14)
                 );
+            columns[1].set_height(columns[1].available_height());
             columns[1].add(
                 TextEdit::multiline(&mut "err".to_string())
                 .font(TextStyle::Monospace)
                 .desired_rows(columns[1].available_height() as usize / 14)
                 );
         });
-        ui.set_height(ui.available_height());
+        ui.set_height(ui.available_height() / 2.0);
     }
 }
 
