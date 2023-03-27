@@ -17,6 +17,9 @@ pub struct Parser{
     pub cmds: Vec<Command>,
 }
 
+//TODO
+//Generate error messages
+
 impl Parser{
     pub fn new(code: &str) -> Self{
         Parser{
@@ -25,6 +28,7 @@ impl Parser{
         }
     }
 
+    //Parse s-exprs in real-time, safely failing when facing incomplete/invalid input
     pub fn parse(&mut self){
         while self.source.len() > 0 {
             if let Ok((input, cmd)) = Parser::parse_cmd(self.source.as_str()){
@@ -36,6 +40,7 @@ impl Parser{
         }
     }
 
+    //Parser combinator of s-exprs
     pub fn parse_cmd(code: &str) -> IResult<&str, Command> {
         alt((
                 Parser::parse_vertex_def,
@@ -50,6 +55,7 @@ impl Parser{
             delimited(tag("("), parser, tag(")"))(src)
     }
 
+    //Remove leading whitespace from input
     fn space(input: &str) -> &str {
         let (res, _) = take_while::<_, _, ()>(Parser::is_whitespace)(input.as_bytes()).unwrap();
         from_utf8(res).unwrap()
@@ -59,6 +65,7 @@ impl Parser{
         is_space(c) || c == '\n' as u8
     }
 
+    //Parse an f32 value preceded by a dimension (x, y or z)
     pub fn parse_pos_dim_value(src: &str, dim: String) -> IResult<&str, f32> {
         Self::parens(src, |src| {
             let (input, _) = tag(dim.as_str())(src)?;
@@ -68,6 +75,7 @@ impl Parser{
         })
     }
 
+    //Parse the x, y, z position of a vertex
     pub fn parse_pos(src: &str) -> IResult<&str, [f32; 3]> {
         Self::parens(src, |src| {
             let (src, _) = tag("pos")(src)?;
@@ -82,6 +90,8 @@ impl Parser{
         })
     }
     
+    //The next three functions are used to convert a 2-digit hex value to a u8 value.
+    
     fn from_hex(input: &str) -> Result<u8, std::num::ParseIntError> {
         u8::from_str_radix(input, 16)
     }
@@ -94,6 +104,7 @@ impl Parser{
         map_res(take_while_m_n(2, 2, Self::is_hex_digit), Self::from_hex)(input)
     } 
 
+    //Parse the RGBA color of a vertex and normalizes it.
     pub fn parse_color(src: &str) -> IResult<&str, [f32; 4]> {
         Parser::parens(src, |src| {
         let input = Self::space(src);
@@ -131,11 +142,13 @@ impl Parser{
         })
     }
 
+    //Required for the separated_list1 in the next function
     fn space_consumer(src: &[u8]) -> Result<(&[u8], ()), nom::Err<()>> {
         let s = Parser::space(from_utf8(src).unwrap());
         Ok((s.as_bytes(), ()))
     }
 
+    //Parse a list of vertex names and return the vector containing the names
     fn parse_vertices_list(src: &str) -> IResult<&str, Vec<String>> {
         Parser::parens(src, |src|{
             let input = Parser::space(src);
@@ -155,6 +168,7 @@ impl Parser{
         })
     }
 
+    //Parse the creation of a vertex buffer
     pub fn parse_mk_vb(src: &str) -> IResult<&str, Command> {
         let input = Parser::space(src);
         Parser::parens(input, |src| {
@@ -174,6 +188,7 @@ impl Parser{
         })
     }
 
+    //Parse a draw command
     fn parse_draw(src: &str) -> IResult<&str, Command> {
         let input = Parser::space(src);
         Parser::parens(input, |src| {
