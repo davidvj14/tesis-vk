@@ -1,34 +1,12 @@
-#![allow(dead_code)]
 use bytemuck::{Pod, Zeroable};
 
+//How to interpret vertex buffers when drawing
 enum DrawingMode{
     Point,
     LineList,
     LineStrip,
     TriangleList,
     TriangleStrip
-}
-
-enum RenderingMode{
-    TwoD,
-    ThreeD,
-}
-
-#[repr(C)]
-#[derive(Default, Debug, Clone, Copy, Zeroable, Pod)]
-pub struct Position{
-    pub x: f64,
-    pub y: f64,
-    pub z: f64,
-}
-
-#[repr(C)]
-#[derive(Default, Debug, Clone, Copy, Pod, Zeroable)]
-pub struct Color{
-    pub red: f32,
-    pub green: f32,
-    pub blue: f32,
-    pub alpha: f32,
 }
 
 #[repr(C)]
@@ -40,12 +18,14 @@ pub struct Vertex{
 
 vulkano::impl_vertex!(Vertex, position, color);
 
+//Vector of vertex names. Might change as the design evolves
 pub type VertexBuffer = Vec<String>;
+
 
 #[derive(Debug, Clone)]
 pub enum Command{
-    GlobalConf,
-    DefVertex(String, Vertex),
-    MkVertexBuffer(String, Box<VertexBuffer>),
-    Draw(String)
+    GlobalConf, //Might remove or actually use later
+    DefVertex(String, Vertex), //Binding position/color data to a name
+    MkVertexBuffer(String, Box<VertexBuffer>), //Binding a VertexBuffer to a name
+    Draw(String) //Asking the engine to draw a vertex buffer. Might change
 }

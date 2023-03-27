@@ -1,4 +1,3 @@
-#![allow(unused)]
 use std::str::{self, from_utf8};
 use nom::{
     IResult,
@@ -7,10 +6,10 @@ use nom::{
     character::{is_alphanumeric, is_space},
     bytes::complete::{tag, take_while, take_while1, take_while_m_n, take_until1},
     number::complete::float,
-    combinator::{map_res, opt}, multi::{many1, separated_list1},
+    combinator::map_res, multi::separated_list1,
 };
 use crate::syntax::{
-    Command, Command::*, Vertex, Position, Color, VertexBuffer,
+    Command, Command::*, Vertex,
 };
 
 pub struct Parser{
@@ -27,7 +26,7 @@ impl Parser{
     }
 
     pub fn parse(&mut self){
-        while(self.source.len() > 0){
+        while self.source.len() > 0 {
             if let Ok((input, cmd)) = Parser::parse_cmd(self.source.as_str()){
                 self.source = input.to_string();
                 self.cmds.push(cmd);
@@ -128,7 +127,7 @@ impl Parser{
                 let vertex = Vertex { position, color };
                 return Ok((input, DefVertex(name.to_string(), vertex)));
             }
-            Err((nom::Err::Incomplete(nom::Needed::Unknown)))
+            Err(nom::Err::Incomplete(nom::Needed::Unknown))
         })
     }
 
@@ -152,7 +151,7 @@ impl Parser{
                 }
                 return Ok((rest, vec_verts));
             }
-            Err((nom::Err::Incomplete(nom::Needed::Unknown)))
+            Err(nom::Err::Incomplete(nom::Needed::Unknown))
         })
     }
 
@@ -171,7 +170,7 @@ impl Parser{
                             MkVertexBuffer(name.to_string(), vb)));
                 }
             }
-            Err((nom::Err::Incomplete(nom::Needed::Unknown)))
+            Err(nom::Err::Incomplete(nom::Needed::Unknown))
         })
     }
 
@@ -186,7 +185,7 @@ impl Parser{
                 let name = from_utf8(name).unwrap().to_string();
                 return Ok((input, Draw(name)));
             }
-            Err((nom::Err::Incomplete(nom::Needed::Unknown)))
+            Err(nom::Err::Incomplete(nom::Needed::Unknown))
         })
     }
 }
