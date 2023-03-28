@@ -80,7 +80,9 @@ fn main() {
 }
 
 const CODE: &str = 
-r#"(def-vertex v1
+r#"(config (drawing-mode triangle-list)
+           (interpreting-mode manual))
+(def-vertex v1
     (pos (x -0.75) (y -1) (z 1))
     (color #FF0000FF))
 (def-vertex v2

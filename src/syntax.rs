@@ -1,12 +1,19 @@
 use bytemuck::{Pod, Zeroable};
 
 //How to interpret vertex buffers when drawing
-enum DrawingMode{
+#[derive(Clone, Copy, Debug)]
+pub enum DrawingMode{
     Point,
     LineList,
     LineStrip,
     TriangleList,
     TriangleStrip
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum InterpretingMode{
+    Continuous,
+    Manual
 }
 
 #[repr(C)]
@@ -24,7 +31,7 @@ pub type VertexBuffer = Vec<String>;
 
 #[derive(Debug, Clone)]
 pub enum Command{
-    GlobalConf, //Might remove or actually use later
+    GlobalConf(DrawingMode, InterpretingMode), //Might remove or actually use later
     DefVertex(String, Vertex), //Binding position/color data to a name
     MkVertexBuffer(String, Box<VertexBuffer>), //Binding a VertexBuffer to a name
     Draw(String) //Asking the engine to draw a vertex buffer. Might change
