@@ -10,17 +10,19 @@ use vulkano::{
     image::{ImageUsage, SampleCount},
 };
 
-use crate::rendering_pipeline::MSAAPipeline;
+use crate::{rendering_pipeline::MSAAPipeline, parser::Parser, interpreter::Interpreter};
 
 pub struct Application{
     pub context: VulkanoContext,
     pub windows: VulkanoWindows,
     pub pipeline: MSAAPipeline,
+    pub parser: Parser,
+    pub changed_input: bool,
     pub gui: Gui,
 }
 
 impl Application{
-    pub fn new(event_loop: &EventLoop<()>) -> Self{
+    pub fn new(event_loop: &EventLoop<()>, code: &String) -> Self{
         let context = VulkanoContext::new(VulkanoConfig::default());
         let mut windows = VulkanoWindows::default();
         
@@ -51,31 +53,35 @@ impl Application{
             },
             );
 
+        let parser = Parser::new(code);
+
         Application {
             context,
             windows,
             pipeline,
+            parser,
+            changed_input: false,
             gui,
         }
     }
 
-    pub fn gui_panel(app_info: &mut AppInfo, vk_ratio: &mut f32, code: &mut String, console: &mut String, gui: &mut Gui){
+    pub fn gui_panel(changed: &mut bool, app_info: &mut AppInfo, vk_ratio: &mut f32, code: &mut String, console: &mut String, gui: &mut Gui){
         let ctx = gui.context();
         egui::SidePanel::right("Panel").resizable(true).show(&ctx, |ui| {
             let font = egui::FontId { size: 14.0, family: egui::FontFamily::Monospace };
             let row_height = ui.fonts().row_height(&font);
             let editor_height = ui.available_height() / 1.5;
             let editor_rows = editor_height / row_height;
+            let editor = TextEdit::multiline(code)
+                .font(font)
+                .desired_width(ui.available_width())
+                .desired_rows(editor_rows as usize);
             ui.set_min_width(app_info.min_width);
             ScrollArea::vertical()
                 .max_height(ui.available_height() / 1.5)
                 .show_rows(ui, row_height, editor_rows as usize - 5, |ui, _| {
                     ui.set_height(ui.available_height());
-                    ui.add(TextEdit::multiline(code)
-                        .font(font)
-                        .desired_width(ui.available_width())
-                        .desired_rows(editor_rows as usize)
-                        );
+                    *changed = ui.add(editor).changed();
                 });
             ui.separator();
             Self::lower_panel(console, ui);

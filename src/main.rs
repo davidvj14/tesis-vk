@@ -13,7 +13,9 @@ use crate::interpreter::Interpreter;
 
 fn main() {
     let event_loop = EventLoop::new();
-    let mut app = Application::new(&event_loop);
+    let mut code = CODE.to_string();
+    let mut console = CONSOLE.to_string();
+    let mut app = Application::new(&event_loop, &code);
     let win_size = app.windows.get_primary_window().unwrap().inner_size();
     let mut app_info = AppInfo::new(
         win_size.into(),
@@ -21,14 +23,12 @@ fn main() {
         win_size.width as f32 / 8.0,
         app.windows.get_primary_window().unwrap().scale_factor(),
         );
-    let mut code = CODE.to_string();
-    let mut console = CONSOLE.to_string();
+    let mut parser = Parser::new(&code);
+    parser.parse();
+    let mut interpreter = Interpreter::new(&parser.cmds, &mut app.pipeline);
+    interpreter.interpret();
     event_loop.run(move |event, _, control_flow| {
         let renderer = app.windows.get_primary_renderer_mut().unwrap();
-        let mut parser = Parser::new(&code);
-        parser.parse();
-        let mut interpreter = Interpreter::new(&parser.cmds, &mut app.pipeline);
-        interpreter.interpret();
         match event{
             Event::WindowEvent { event, window_id} if window_id == renderer.window().id() => {
                 let _pass = !app.gui.update(&event);
@@ -53,11 +53,19 @@ fn main() {
             Event::RedrawRequested(window_id) if window_id == window_id => {
                 app.gui.immediate_ui(|gui|{
                     Application::gui_panel(
+                        &mut app.changed_input,
                         &mut app_info,
                         &mut app.pipeline.vk_ratio,
                         &mut code,
                         &mut console,
                         gui);
+                    if app.changed_input{
+                        let mut parser = Parser::new(&code);
+                        parser.parse();
+                        let mut interpreter = Interpreter::new(&parser.cmds, &mut app.pipeline);
+                        interpreter.interpret();
+                        app.changed_input = false;
+                    }
                 });
                 let before_future = renderer.acquire().unwrap();
                 let after_future = app.pipeline.render(before_future, renderer.swapchain_image_view(), &mut app.gui);
