@@ -7,7 +7,7 @@ use vulkano_util::{
 };
 use vulkano::{
     format::Format,
-    image::{ImageUsage, SampleCount},
+    image::{ImageUsage, SampleCount}, device::Features,
 };
 
 use crate::{rendering_pipeline::MSAAPipeline, parser::Parser, interpreter::Interpreter};
@@ -19,11 +19,18 @@ pub struct Application{
     pub parser: Parser,
     pub changed_input: bool,
     pub gui: Gui,
+    pub interpreter: Interpreter,
 }
 
 impl Application{
     pub fn new(event_loop: &EventLoop<()>, code: &String) -> Self{
-        let context = VulkanoContext::new(VulkanoConfig::default());
+        let mut vk_config = VulkanoConfig::default();
+        vk_config.device_features =
+            Features {
+                multi_draw_indirect: true,
+                ..Features::empty()
+            };
+        let context = VulkanoContext::new(vk_config);
         let mut windows = VulkanoWindows::default();
         
         windows.create_window(&event_loop, &context, &WindowDescriptor::default(), |ci|{
@@ -62,6 +69,7 @@ impl Application{
             parser,
             changed_input: false,
             gui,
+            interpreter: Interpreter::new(code),
         }
     }
 

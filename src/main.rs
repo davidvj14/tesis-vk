@@ -7,9 +7,6 @@ use ui::{Application, AppInfo};
 use winit::{
     event::{Event, WindowEvent}, event_loop::{ControlFlow, EventLoop},
 };
-use parser::Parser;
-
-use crate::interpreter::Interpreter;
 
 fn main() {
     let event_loop = EventLoop::new();
@@ -23,10 +20,7 @@ fn main() {
         win_size.width as f32 / 8.0,
         app.windows.get_primary_window().unwrap().scale_factor(),
         );
-    let mut parser = Parser::new(&code);
-    parser.parse();
-    let mut interpreter = Interpreter::new(&parser.cmds, &mut app.pipeline);
-    interpreter.interpret();
+    app.interpreter.interpret(&mut app.pipeline);
     event_loop.run(move |event, _, control_flow| {
         let renderer = app.windows.get_primary_renderer_mut().unwrap();
         match event{
@@ -60,10 +54,8 @@ fn main() {
                         &mut console,
                         gui);
                     if app.changed_input{
-                        let mut parser = Parser::new(&code);
-                        parser.parse();
-                        let mut interpreter = Interpreter::new(&parser.cmds, &mut app.pipeline);
-                        interpreter.interpret();
+                        app.interpreter.parser.source = code.clone();
+                        app.interpreter.interpret(&mut app.pipeline);
                         app.changed_input = false;
                     }
                 });
@@ -101,8 +93,11 @@ r#"(config (drawing-mode triangle-list)
     (pos (x 0.75) (y 0.25) (z 1))
     (color #0000FFFF))
 (mk-vertex-buffer vb1
-    (v1 v2 v3 v4 v5 v6))
+    (v1 v2 v3))
+(mk-vertex-buffer vb2
+    (v4 v5 v6))
 (draw vb1)
+(draw vb2)
 "#;
 
 const CONSOLE: &str = "vk-repl> ";

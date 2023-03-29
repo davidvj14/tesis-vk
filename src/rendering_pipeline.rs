@@ -15,7 +15,7 @@ use vulkano::{
     memory::allocator::StandardMemoryAllocator,
     pipeline::{
         graphics::{
-            input_assembly::InputAssemblyState,
+            input_assembly::{InputAssemblyState, PrimitiveTopology},
             multisample::MultisampleState,
             vertex_input::BuffersDefinition,
             viewport::{Viewport, ViewportState},
@@ -26,9 +26,7 @@ use vulkano::{
     sync::GpuFuture,
 };
 use vulkano_util::renderer::SwapchainImageView;
-use crate::syntax::Vertex;
-
-
+use crate::syntax::{Vertex, DrawingMode};
 
 pub struct MSAAPipeline{
     allocator: Arc<StandardMemoryAllocator>,
@@ -37,7 +35,7 @@ pub struct MSAAPipeline{
     pipeline: Arc<GraphicsPipeline>,
     subpass: Subpass,
     intermediary: Arc<ImageView<AttachmentImage>>,
-    pub vertex_buffer: Arc<CpuAccessibleBuffer<[Vertex]>>,
+    pub vertex_buffers: Vec<Arc<CpuAccessibleBuffer<[Vertex]>>>,
     command_buffer_allocator: StandardCommandBufferAllocator,
     pub vk_ratio: f32,
 }
@@ -50,23 +48,10 @@ impl MSAAPipeline{
         sample_count: SampleCount,
         ) -> Self {
         let render_pass = Self::create_render_pass(queue.device().clone(), image_format, sample_count);
-        let (pipeline, subpass) = Self::create_pipeline(queue.device().clone(), render_pass.clone());
+        let (pipeline, subpass) =
+            Self::create_pipeline(queue.device().clone(), render_pass.clone(), PrimitiveTopology::TriangleList);
 
-        let vertex_buffer = {
-            CpuAccessibleBuffer::from_iter(
-                allocator,
-                BufferUsage { vertex_buffer: true, ..BufferUsage::empty() },
-                false,
-                [
-                    Vertex { position: [-1.0, -0.25, 0.0], color: [1.0, 0.0, 0.0, 1.0] },
-                    Vertex { position: [0.0, 1.0, 0.0], color: [0.0, 1.0, 0.0, 1.0] },
-                    Vertex { position: [1.0, -0.1, 0.0], color: [0.0, 0.0, 1.0, 1.0] },
-                ]
-                .iter()
-                .cloned(),
-                )
-                .expect("failed to create buffer")
-        };
+        let vertex_buffers: Vec<Arc<CpuAccessibleBuffer<[Vertex]>>> = Vec::new();
 
         let command_buffer_allocator = StandardCommandBufferAllocator::new(queue.device().clone(),  Default::default());
         let intermediary = ImageView::new_default(
@@ -80,25 +65,27 @@ impl MSAAPipeline{
             pipeline,
             subpass,
             intermediary,
-            vertex_buffer,
+            vertex_buffers,
             command_buffer_allocator,
             vk_ratio: 1.0,
         }
     }
 
-    pub fn set_vertex_buffer(&mut self, vb: Vec<Vertex>){
-        let vertex_buffer = {
-            CpuAccessibleBuffer::from_iter(
-                &self.allocator,
-                BufferUsage { vertex_buffer: true, ..BufferUsage::empty() },
-                false,
-                vb
-                .iter()
-                .cloned(),
-                )
-                .expect("failed to create buffer")
-        };
-        self.vertex_buffer = vertex_buffer;
+    pub fn set_vertex_buffer(&mut self, vbs: Vec<Vec<Vertex>>){
+        self.vertex_buffers.clear();
+        for vb in vbs{
+            let buf = 
+                CpuAccessibleBuffer::from_iter(
+                    &self.allocator,
+                    BufferUsage { vertex_buffer: true, ..BufferUsage::empty() },
+                    false,
+                    vb
+                    .iter()
+                    .cloned(),
+                    )
+                    .expect("failed to create buffer");
+            self.vertex_buffers.push(buf);
+        }
     }
 
     fn create_render_pass(
@@ -139,6 +126,7 @@ impl MSAAPipeline{
     fn create_pipeline(
         device: Arc<Device>,
         render_pass: Arc<RenderPass>,
+        topology: PrimitiveTopology
         ) -> (Arc<GraphicsPipeline>, Subpass){
         let vs = vs::load(device.clone()).expect("failed to create shader module");
         let fs = fs::load(device.clone()).expect("failed to create shader module");
@@ -149,7 +137,7 @@ impl MSAAPipeline{
         GraphicsPipeline::start()
             .vertex_input_state(BuffersDefinition::new().vertex::<Vertex>())
             .vertex_shader(vs.entry_point("main").unwrap(), ())
-            .input_assembly_state(InputAssemblyState::new())
+            .input_assembly_state(InputAssemblyState::new().topology(topology))
             .fragment_shader(fs.entry_point("main").unwrap(), ())
             .viewport_state(ViewportState::viewport_dynamic_scissor_irrelevant())
             .render_pass(subpass.clone())
@@ -161,6 +149,11 @@ impl MSAAPipeline{
             .unwrap(),
             subpass
         )
+    }
+
+    //TODO: make it actually do something
+    pub fn change_topology(&mut self, mode: DrawingMode){
+        self.pipeline.input_assembly_state().topology(PrimitiveTopology::TriangleList);
     }
 
     pub fn render(
@@ -218,16 +211,19 @@ impl MSAAPipeline{
             },
         ).unwrap();
 
-        secondary_builder
-            .bind_pipeline_graphics(self.pipeline.clone())
-            .set_viewport(0, vec![Viewport{
-                origin: [0.0, 0.0],
-                dimensions: [vk_dimensions[0] as f32, vk_dimensions[1] as f32],
-                depth_range: 0.0..1.0,
-            }])
-            .bind_vertex_buffers(0, self.vertex_buffer.clone())
-            .draw(self.vertex_buffer.len() as u32, 1, 0, 0)
-            .unwrap();
+        for vb in &self.vertex_buffers{
+            secondary_builder
+                .bind_pipeline_graphics(self.pipeline.clone())
+                .set_viewport(0, vec![Viewport{
+                    origin: [0.0, 0.0],
+                    dimensions: [vk_dimensions[0] as f32, vk_dimensions[1] as f32],
+                    depth_range: 0.0..1.0,
+                }])
+                .bind_vertex_buffers(0, vb.clone())
+                .draw(vb.len() as u32, 1, 0, 0)
+                .unwrap();
+        }
+
         let cb = secondary_builder.build().unwrap();
         builder.execute_commands(cb).unwrap();
 
