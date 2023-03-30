@@ -1,7 +1,7 @@
 use bytemuck::{Pod, Zeroable};
 
 //How to interpret vertex buffers when drawing
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum DrawingMode{
     Point,
     LineList,

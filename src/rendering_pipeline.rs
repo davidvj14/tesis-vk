@@ -1,7 +1,7 @@
 use egui_winit_vulkano::Gui;
 use std::{
     sync::Arc,
-    convert::TryFrom,
+    convert::TryFrom, collections::HashMap,
 };
 use vulkano::{
     buffer::{BufferUsage, CpuAccessibleBuffer, TypedBufferAccess},
@@ -32,7 +32,8 @@ pub struct MSAAPipeline{
     allocator: Arc<StandardMemoryAllocator>,
     queue: Arc<Queue>,
     render_pass: Arc<RenderPass>,
-    pipeline: Arc<GraphicsPipeline>,
+    current_primitive: DrawingMode,
+    pipelines: HashMap<DrawingMode, Arc<GraphicsPipeline>>,
     subpass: Subpass,
     intermediary: Arc<ImageView<AttachmentImage>>,
     pub vertex_buffers: Vec<Arc<CpuAccessibleBuffer<[Vertex]>>>,
@@ -48,8 +49,43 @@ impl MSAAPipeline{
         sample_count: SampleCount,
         ) -> Self {
         let render_pass = Self::create_render_pass(queue.device().clone(), image_format, sample_count);
+
+        let mut pipelines = HashMap::new();
+
         let (pipeline, subpass) =
-            Self::create_pipeline(queue.device().clone(), render_pass.clone(), PrimitiveTopology::TriangleList);
+            Self::create_pipeline(
+                queue.device().clone(),
+                render_pass.clone(),
+                PrimitiveTopology::PointList);
+        pipelines.insert(DrawingMode::Point, pipeline);
+
+        let (pipeline, _) =
+            Self::create_pipeline(
+                queue.device().clone(),
+                render_pass.clone(),
+                PrimitiveTopology::LineList);
+        pipelines.insert(DrawingMode::LineList, pipeline);
+
+        let (pipeline, _) =
+            Self::create_pipeline(
+                queue.device().clone(),
+                render_pass.clone(),
+                PrimitiveTopology::LineStrip);
+        pipelines.insert(DrawingMode::LineStrip, pipeline);
+
+        let (pipeline, _) =
+            Self::create_pipeline(
+                queue.device().clone(),
+                render_pass.clone(),
+                PrimitiveTopology::TriangleStrip);
+        pipelines.insert(DrawingMode::TriangleStrip, pipeline);
+
+        let (pipeline, _) =
+            Self::create_pipeline(
+                queue.device().clone(),
+                render_pass.clone(),
+                PrimitiveTopology::TriangleList);
+        pipelines.insert(DrawingMode::TriangleList, pipeline);
 
         let vertex_buffers: Vec<Arc<CpuAccessibleBuffer<[Vertex]>>> = Vec::new();
 
@@ -62,12 +98,22 @@ impl MSAAPipeline{
             allocator: allocator.clone(),
             queue,
             render_pass,
-            pipeline,
+            current_primitive: DrawingMode::TriangleList,
+            pipelines,
             subpass,
             intermediary,
             vertex_buffers,
             command_buffer_allocator,
             vk_ratio: 1.0,
+        }
+    }
+
+    pub fn get_current_pipeline(&self) -> Arc<GraphicsPipeline> {
+        if let Some(pipeline) = self.pipelines.get(&self.current_primitive){
+            return pipeline.clone();
+        }
+        else {
+            panic!("Couldn't get pipeline");
         }
     }
 
@@ -153,7 +199,7 @@ impl MSAAPipeline{
 
     //TODO: make it actually do something
     pub fn change_topology(&mut self, mode: DrawingMode){
-        self.pipeline.input_assembly_state().topology(PrimitiveTopology::TriangleList);
+        self.current_primitive = mode;
     }
 
     pub fn render(
@@ -213,7 +259,7 @@ impl MSAAPipeline{
 
         for vb in &self.vertex_buffers{
             secondary_builder
-                .bind_pipeline_graphics(self.pipeline.clone())
+                .bind_pipeline_graphics(self.get_current_pipeline().clone())
                 .set_viewport(0, vec![Viewport{
                     origin: [0.0, 0.0],
                     dimensions: [vk_dimensions[0] as f32, vk_dimensions[1] as f32],
