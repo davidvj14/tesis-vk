@@ -72,7 +72,7 @@ fn main() {
 }
 
 const CODE: &str = 
-r#"(config (drawing-mode triangle-list)
+r#"(config (primitive triangle-list)
            (interpreting-mode manual))
 (def-vertex v1
     (pos (x -0.75) (y -1) (z 1))

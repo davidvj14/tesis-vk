@@ -2,18 +2,20 @@
 use crate::parser::*;
 use crate::syntax::*;
 use crate::syntax::Command::*;
-use crate::syntax::DrawingMode::*;
 use crate::syntax::InterpretingMode::*;
-use std::collections::HashMap;
 use crate::rendering_pipeline::MSAAPipeline;
+use std::collections::HashMap;
+use vulkano::pipeline::graphics::input_assembly::{
+    PrimitiveTopology, PrimitiveTopology::*
+};
 
 pub struct Interpreter{
     pub parser: Parser,
     pub vertex_bindings: HashMap<String, Vertex>,
     pub vb_bindings: HashMap<String, Vec<Vertex>>,
-    vbuffers_to_send: HashMap<String, (Option<DrawingMode>, Vec<Vertex>)>,
+    vbuffers_to_send: HashMap<String, (Option<PrimitiveTopology>, Vec<Vertex>)>,
     sent_buffers: Vec<String>,
-    drawing_mode: DrawingMode,
+    drawing_mode: PrimitiveTopology,
     interpreting_mode: InterpretingMode,
 }
 
@@ -25,7 +27,7 @@ impl Interpreter{
             vb_bindings: HashMap::new(),
             vbuffers_to_send: HashMap::new(),
             sent_buffers: Vec::new(),
-            drawing_mode: Point,
+            drawing_mode: TriangleList,
             interpreting_mode: Continuous,
         }
     }
@@ -57,7 +59,7 @@ impl Interpreter{
                 },
                 Draw(mode, name) => {
                     if let Some(vb) = self.vb_bindings.get(name){
-                        let mut send: Vec<(Option<DrawingMode>, Vec<Vertex>)> = Vec::new();
+                        let mut send: Vec<(Option<PrimitiveTopology>, Vec<Vertex>)> = Vec::new();
                         if !(self.sent_buffers.contains(name)){
                             self.vbuffers_to_send.insert(name.to_string(), (*mode, vb.to_vec()));
                             self.sent_buffers.push(name.clone());

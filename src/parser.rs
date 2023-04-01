@@ -10,7 +10,10 @@ use nom::{
 };
 use crate::syntax::{
     Command, Command::*, Vertex,
-    DrawingMode, DrawingMode::*, InterpretingMode, InterpretingMode::*,
+    InterpretingMode, InterpretingMode::*,
+};
+use vulkano::pipeline::graphics::input_assembly::{
+    PrimitiveTopology, PrimitiveTopology::*
 };
 
 pub struct Parser{
@@ -232,17 +235,17 @@ impl Parser{
         })
     }
 
-    fn parse_drawing_mode(src: &str) -> IResult<&str, DrawingMode> {
+    fn parse_drawing_mode(src: &str) -> IResult<&str, PrimitiveTopology> {
         let input = Parser::space(src);
         Parser::parens(input, |src| {
             let input = Parser::space(src);
-            let (input, _) = tag("drawing-mode")(input)?;
+            let (input, _) = tag("primitive")(input)?;
             let input = Parser::space(input);
             if let Ok((input, name)) =
                 take_while1::<_, _, ()>(Parser::is_identifier_char)(input.as_bytes()){
                     match from_utf8(name).unwrap() {
                         "point" => 
-                            return Ok((from_utf8(input).unwrap(), Point)),
+                            return Ok((from_utf8(input).unwrap(), PointList)),
                         "line-list" => 
                             return Ok((from_utf8(input).unwrap(), LineList)),
                         "line-strip" => 
