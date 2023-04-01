@@ -11,7 +11,7 @@ pub struct Interpreter{
     pub parser: Parser,
     pub vertex_bindings: HashMap<String, Vertex>,
     pub vb_bindings: HashMap<String, Vec<Vertex>>,
-    vbuffers_to_send: HashMap<String, Vec<Vertex>>,
+    vbuffers_to_send: HashMap<String, (Option<DrawingMode>, Vec<Vertex>)>,
     sent_buffers: Vec<String>,
     drawing_mode: DrawingMode,
     interpreting_mode: InterpretingMode,
@@ -55,15 +55,15 @@ impl Interpreter{
                     }
                     self.vb_bindings.insert(name.to_string(), vert_buf);
                 },
-                Draw(name) => {
+                Draw(mode, name) => {
                     if let Some(vb) = self.vb_bindings.get(name){
-                        let mut send: Vec<Vec<Vertex>> = Vec::new();
+                        let mut send: Vec<(Option<DrawingMode>, Vec<Vertex>)> = Vec::new();
                         if !(self.sent_buffers.contains(name)){
-                            self.vbuffers_to_send.insert(name.to_string(), vb.to_vec());
+                            self.vbuffers_to_send.insert(name.to_string(), (*mode, vb.to_vec()));
                             self.sent_buffers.push(name.clone());
                         }
                         for (_, v) in &self.vbuffers_to_send{
-                            send.push(v.to_vec());
+                            send.push(v.clone());
                         }
                         pipeline.set_vertex_buffer(send);
                     }

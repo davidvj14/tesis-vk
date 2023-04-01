@@ -36,7 +36,7 @@ pub struct MSAAPipeline{
     pipelines: HashMap<DrawingMode, Arc<GraphicsPipeline>>,
     subpass: Subpass,
     intermediary: Arc<ImageView<AttachmentImage>>,
-    pub vertex_buffers: Vec<Arc<CpuAccessibleBuffer<[Vertex]>>>,
+    pub vertex_buffers: Vec<(Option<DrawingMode>, Arc<CpuAccessibleBuffer<[Vertex]>>)>,
     command_buffer_allocator: StandardCommandBufferAllocator,
     pub vk_ratio: f32,
 }
@@ -87,7 +87,7 @@ impl MSAAPipeline{
                 PrimitiveTopology::TriangleList);
         pipelines.insert(DrawingMode::TriangleList, pipeline);
 
-        let vertex_buffers: Vec<Arc<CpuAccessibleBuffer<[Vertex]>>> = Vec::new();
+        let vertex_buffers = Vec::new();
 
         let command_buffer_allocator = StandardCommandBufferAllocator::new(queue.device().clone(),  Default::default());
         let intermediary = ImageView::new_default(
@@ -117,9 +117,19 @@ impl MSAAPipeline{
         }
     }
 
-    pub fn set_vertex_buffer(&mut self, vbs: Vec<Vec<Vertex>>){
+    pub fn get_specific_pipeline(&self, mode: DrawingMode) -> Arc<GraphicsPipeline> {
+        if let Some(pipeline) = self.pipelines.get(&mode){
+            return pipeline.clone();
+        }
+        else {
+            panic!("Couldn't get pipeline");
+        }
+    }
+
+
+    pub fn set_vertex_buffer(&mut self, vbs: Vec<(Option<DrawingMode>, Vec<Vertex>)>){
         self.vertex_buffers.clear();
-        for vb in vbs{
+        for (mode, vb) in vbs{
             let buf = 
                 CpuAccessibleBuffer::from_iter(
                     &self.allocator,
@@ -130,7 +140,7 @@ impl MSAAPipeline{
                     .cloned(),
                     )
                     .expect("failed to create buffer");
-            self.vertex_buffers.push(buf);
+            self.vertex_buffers.push((mode, buf));
         }
     }
 
@@ -197,7 +207,6 @@ impl MSAAPipeline{
         )
     }
 
-    //TODO: make it actually do something
     pub fn change_topology(&mut self, mode: DrawingMode){
         self.current_primitive = mode;
     }
@@ -257,17 +266,31 @@ impl MSAAPipeline{
             },
         ).unwrap();
 
-        for vb in &self.vertex_buffers{
-            secondary_builder
-                .bind_pipeline_graphics(self.get_current_pipeline().clone())
-                .set_viewport(0, vec![Viewport{
-                    origin: [0.0, 0.0],
-                    dimensions: [vk_dimensions[0] as f32, vk_dimensions[1] as f32],
-                    depth_range: 0.0..1.0,
-                }])
-                .bind_vertex_buffers(0, vb.clone())
-                .draw(vb.len() as u32, 1, 0, 0)
-                .unwrap();
+        for (mode, vb) in &self.vertex_buffers{
+            match mode {
+                None => {
+                    secondary_builder
+                        .bind_pipeline_graphics(self.get_current_pipeline().clone())
+                        .set_viewport(0, vec![Viewport{
+                            origin: [0.0, 0.0],
+                            dimensions: [vk_dimensions[0] as f32, vk_dimensions[1] as f32],
+                            depth_range: 0.0..1.0,}])
+                        .bind_vertex_buffers(0, vb.clone())
+                        .draw(vb.len() as u32, 1, 0, 0)
+                        .unwrap();
+                    },
+                Some(mode) => {
+                    secondary_builder
+                        .bind_pipeline_graphics(self.get_specific_pipeline(*mode).clone())
+                        .set_viewport(0, vec![Viewport{
+                            origin: [0.0, 0.0],
+                            dimensions: [vk_dimensions[0] as f32, vk_dimensions[1] as f32],
+                            depth_range: 0.0..1.0,}])
+                        .bind_vertex_buffers(0, vb.clone())
+                        .draw(vb.len() as u32, 1, 0, 0)
+                        .unwrap();
+                    }
+            }
         }
 
         let cb = secondary_builder.build().unwrap();

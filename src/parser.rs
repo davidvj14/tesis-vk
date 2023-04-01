@@ -197,11 +197,22 @@ impl Parser{
             let input = Parser::space(src);
             let (input, _) = tag("draw")(input)?;
             let input = Parser::space(input);
+            let mode = None;
+            if let Ok((input, dmode)) = Parser::parse_drawing_mode(input){
+                let mode = Some(dmode);
+                let input = Parser::space(input);
+                if let Ok((input, name)) =
+                    take_while1::<_, _, ()>(is_alphanumeric)(input.as_bytes()){
+                        let input = Parser::space(from_utf8(input).unwrap());
+                        let name = from_utf8(name).unwrap().to_string();
+                        return Ok((input, Draw(mode, name)));
+                }
+            }
             if let Ok((input, name)) =
                 take_while1::<_, _, ()>(is_alphanumeric)(input.as_bytes()){
                     let input = Parser::space(from_utf8(input).unwrap());
                     let name = from_utf8(name).unwrap().to_string();
-                    return Ok((input, Draw(name)));
+                    return Ok((input, Draw(mode, name)));
             }
             Err(nom::Err::Incomplete(nom::Needed::Unknown))
         })

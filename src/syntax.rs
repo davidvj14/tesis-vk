@@ -31,8 +31,9 @@ pub type VertexBuffer = Vec<String>;
 
 #[derive(Debug, Clone)]
 pub enum Command{
-    GlobalConf(DrawingMode, InterpretingMode), //Might remove or actually use later
+    GlobalConf(DrawingMode, InterpretingMode),
     DefVertex(String, Vertex), //Binding position/color data to a name
     MkVertexBuffer(String, Box<VertexBuffer>), //Binding a VertexBuffer to a name
-    Draw(String) //Asking the engine to draw a vertex buffer. Might change
+    Draw(Option<DrawingMode>, String) //Asking the engine to draw a vertex buffer with an optional
+                                      //drawing mode. Might change
 }
