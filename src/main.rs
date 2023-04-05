@@ -3,6 +3,8 @@ mod interpreter;
 mod syntax;
 mod parser;
 mod rendering_pipeline;
+mod tvk_glm;
+use crate::tvk_glm::geometric::*;
 use ui::{Application, AppInfo};
 use winit::{
     event::{Event, WindowEvent}, event_loop::{ControlFlow, EventLoop},
