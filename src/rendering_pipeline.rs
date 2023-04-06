@@ -1,7 +1,7 @@
 use egui_winit_vulkano::Gui;
 use std::{
     sync::Arc,
-    convert::TryFrom, collections::HashMap,
+    convert::TryFrom, collections::{HashMap, BTreeMap},
 };
 use vulkano::{
     buffer::{BufferUsage, CpuAccessibleBuffer, TypedBufferAccess},
@@ -20,13 +20,13 @@ use vulkano::{
             vertex_input::BuffersDefinition,
             viewport::{Viewport, ViewportState},
         },
-        GraphicsPipeline
+        GraphicsPipeline, Pipeline
     },
     render_pass::{Framebuffer, FramebufferCreateInfo, RenderPass, Subpass},
-    sync::GpuFuture,
+    sync::GpuFuture, descriptor_set::{layout::{DescriptorSetLayoutBinding, DescriptorSetLayout}, DescriptorSet, pool::DescriptorPoolCreateInfo, PersistentDescriptorSet, allocator::StandardDescriptorSetAllocator, WriteDescriptorSet}, shader::ShaderStage, NonExhaustive,
 };
 use vulkano_util::renderer::SwapchainImageView;
-use crate::syntax::Vertex;
+use crate::{syntax::Vertex, model::{Model, TransUBO}, tvk_glm::identity_mat4};
 
 pub struct MSAAPipeline{
     allocator: Arc<StandardMemoryAllocator>,
@@ -36,7 +36,7 @@ pub struct MSAAPipeline{
     pipelines: HashMap<PrimitiveTopology, Arc<GraphicsPipeline>>,
     subpass: Subpass,
     intermediary: Arc<ImageView<AttachmentImage>>,
-    pub vertex_buffers: Vec<(Option<PrimitiveTopology>, Arc<CpuAccessibleBuffer<[Vertex]>>)>,
+    pub models: Vec<(Model, Arc<CpuAccessibleBuffer<[Vertex]>>)>,
     command_buffer_allocator: StandardCommandBufferAllocator,
     pub vk_ratio: f32,
 }
@@ -87,7 +87,7 @@ impl MSAAPipeline{
                 PrimitiveTopology::TriangleList);
         pipelines.insert(PrimitiveTopology::TriangleList, pipeline);
 
-        let vertex_buffers = Vec::new();
+        let models = Vec::new();
 
         let command_buffer_allocator = StandardCommandBufferAllocator::new(queue.device().clone(),  Default::default());
         let intermediary = ImageView::new_default(
@@ -102,7 +102,7 @@ impl MSAAPipeline{
             pipelines,
             subpass,
             intermediary,
-            vertex_buffers,
+            models,
             command_buffer_allocator,
             vk_ratio: 1.0,
         }
@@ -126,21 +126,20 @@ impl MSAAPipeline{
         }
     }
 
-
-    pub fn set_vertex_buffer(&mut self, vbs: Vec<(Option<PrimitiveTopology>, Vec<Vertex>)>){
-        self.vertex_buffers.clear();
-        for (mode, vb) in vbs{
+    pub fn set_vertex_buffer(&mut self, models: Vec<Model>){
+        self.models.clear();
+        for model in models {
             let buf = 
                 CpuAccessibleBuffer::from_iter(
                     &self.allocator,
                     BufferUsage { vertex_buffer: true, ..BufferUsage::empty() },
                     false,
-                    vb
+                    model.vertices
                     .iter()
                     .cloned(),
                     )
                     .expect("failed to create buffer");
-            self.vertex_buffers.push((mode, buf));
+            self.models.push((model, buf));
         }
     }
 
@@ -184,7 +183,7 @@ impl MSAAPipeline{
         render_pass: Arc<RenderPass>,
         topology: PrimitiveTopology
         ) -> (Arc<GraphicsPipeline>, Subpass){
-        let vs = vs::load(device.clone()).expect("failed to create shader module");
+        let vs = vs2::load(device.clone()).expect("failed to create shader module");
         let fs = fs::load(device.clone()).expect("failed to create shader module");
 
         let subpass = Subpass::from(render_pass, 0).unwrap();
@@ -266,8 +265,43 @@ impl MSAAPipeline{
             },
         ).unwrap();
 
-        for (mode, vb) in &self.vertex_buffers{
-            match mode {
+        for (model, vb) in &self.models{
+            let ubo_matrix = TransUBO::generate_ubo(&model.transforms);
+            let pool = DescriptorPoolCreateInfo{
+                ..Default::default()
+            };
+            let desc_set_layout_binding = DescriptorSetLayoutBinding{
+                descriptor_type: vulkano::descriptor_set::layout::DescriptorType::UniformBuffer,
+                descriptor_count: 1,
+                variable_descriptor_count: false,
+                stages: ShaderStage::Vertex.into(),
+                immutable_samplers: [].to_vec(),
+                _ne: pool._ne
+            };
+
+            let mut bind = BTreeMap::new();
+            bind.insert(0u32, desc_set_layout_binding);
+            let desc_set_layout = DescriptorSetLayout::new(
+                self.queue.device().clone(),
+                vulkano::descriptor_set::layout::DescriptorSetLayoutCreateInfo {
+                    bindings: bind,
+                    ..Default::default()
+                }
+                ).unwrap();
+            let unibuffer = CpuAccessibleBuffer::from_data(
+                &self.allocator,
+                BufferUsage{ uniform_buffer: true, ..Default::default()},
+                false,
+                [ubo_matrix.model, ubo_matrix.view, ubo_matrix.projection],
+                ).unwrap();
+            let desc_alloca =
+                StandardDescriptorSetAllocator::new(self.queue.device().clone());
+            let desc_set = PersistentDescriptorSet::new(
+                &desc_alloca,
+                desc_set_layout,
+                [WriteDescriptorSet::buffer(0, unibuffer.clone())]
+                ).unwrap();
+            match model.topology {
                 None => {
                     secondary_builder
                         .bind_pipeline_graphics(self.get_current_pipeline().clone())
@@ -276,12 +310,18 @@ impl MSAAPipeline{
                             dimensions: [vk_dimensions[0] as f32, vk_dimensions[1] as f32],
                             depth_range: 0.0..1.0,}])
                         .bind_vertex_buffers(0, vb.clone())
+                        .bind_descriptor_sets(
+                            vulkano::pipeline::PipelineBindPoint::Graphics,
+                            self.get_current_pipeline().layout().clone(),
+                            0,
+                            desc_set.clone()
+                        )
                         .draw(vb.len() as u32, 1, 0, 0)
                         .unwrap();
                     },
-                Some(mode) => {
+                Some(topology) => {
                     secondary_builder
-                        .bind_pipeline_graphics(self.get_specific_pipeline(*mode).clone())
+                        .bind_pipeline_graphics(self.get_specific_pipeline(topology).clone())
                         .set_viewport(0, vec![Viewport{
                             origin: [0.0, 0.0],
                             dimensions: [vk_dimensions[0] as f32, vk_dimensions[1] as f32],
@@ -320,6 +360,30 @@ layout(location = 0) out vec4 v_color;
 void main() {
     gl_Position = vec4(position, 1.0);
     v_color = color;
+}"
+    }
+}
+
+mod vs2 {
+    vulkano_shaders::shader! {
+        ty: "vertex",
+        src: "
+#version 450
+
+layout(binding = 0) uniform UniformBufferObject {
+    mat4 model;
+    mat4 view;
+    mat4 proj;
+} ubo;
+
+layout(location = 0) in vec3 position;
+layout(location = 1) in vec4 color;
+
+layout(location = 0) out vec4 fragColor;
+
+void main() {
+    gl_Position = ubo.proj * ubo.view * ubo.model * vec4(position, 1.0);
+    fragColor = color;
 }"
     }
 }

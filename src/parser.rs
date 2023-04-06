@@ -9,8 +9,8 @@ use nom::{
     combinator::map_res, multi::separated_list1,
 };
 use crate::syntax::{
-    Command, Command::*, Vertex,
-    InterpretingMode, InterpretingMode::*,
+    Command::{self, *}, Vertex, InterpretingMode::{self, *},
+    Transform, ModelTransform, ModelOperation::{self, *},
 };
 use vulkano::pipeline::graphics::input_assembly::{
     PrimitiveTopology, PrimitiveTopology::*
@@ -51,6 +51,8 @@ impl Parser{
                 Parser::parse_vertex_def,
                 Parser::parse_mk_vb,
                 Parser::parse_draw,
+                Parser::parse_mk_transform,
+                Parser::parse_model_ops_cmds,
                 ))(code)
     }
 
@@ -184,9 +186,8 @@ impl Parser{
                 let input = Parser::space(from_utf8(input).unwrap());
                 let name = from_utf8(name).unwrap();
                 if let Ok((input, verts)) = Parser::parse_vertices_list(input){
-                    let vb : Box<Vec<String>> = Box::new(verts);
                     return Ok((input,
-                            MkVertexBuffer(name.to_string(), vb)));
+                            MkVertexBuffer(name.to_string(), verts)));
                 }
             }
             Err(nom::Err::Incomplete(nom::Needed::Unknown))
@@ -201,7 +202,7 @@ impl Parser{
             let (input, _) = tag("draw")(input)?;
             let input = Parser::space(input);
             let mode = None;
-            if let Ok((input, dmode)) = Parser::parse_drawing_mode(input){
+            if let Ok((input, dmode)) = Parser::parse_topology(input){
                 let mode = Some(dmode);
                 let input = Parser::space(input);
                 if let Ok((input, name)) =
@@ -227,15 +228,15 @@ impl Parser{
             let input = Parser::space(src);
             let (input, _) = tag("config")(input)?;
             let input = Parser::space(input);
-            let (input, drawing_mode) = Parser::parse_drawing_mode(input)?;
+            let (input, topology) = Parser::parse_topology(input)?;
             let input = Parser::space(input);
             let (input, interpreting_mode) = Parser::parse_interpreting_mode(input)?;
             return Ok((input,
-                    GlobalConf(drawing_mode, interpreting_mode)))
+                    GlobalConf(topology, interpreting_mode)))
         })
     }
 
-    fn parse_drawing_mode(src: &str) -> IResult<&str, PrimitiveTopology> {
+    fn parse_topology(src: &str) -> IResult<&str, PrimitiveTopology> {
         let input = Parser::space(src);
         Parser::parens(input, |src| {
             let input = Parser::space(src);
@@ -283,6 +284,152 @@ impl Parser{
             }
             Err(nom::Err::Incomplete(nom::Needed::Unknown))
         })
-
     }
+
+    fn parse_mk_transform(src: &str) -> IResult<&str, Command> {
+        let input = Parser::space(src);
+        Parser::parens(input, |src| {
+            let input = Parser::space(src);
+            let (input, _) = tag("mk-transform")(input)?;
+            let input = Parser::space(input);
+            let (input, name) = 
+                take_while1::<_, _, ()>(Parser::is_identifier_char)(input.as_bytes())
+                .expect("");
+            let input = Parser::space(from_utf8(input).unwrap());
+            let (input, model) = Parser::parse_model_transforms(input)?;
+            Ok((input,
+                    MkTransform(from_utf8(name).unwrap().to_string(),
+                    Transform{
+                        model: Some(model),
+                        view: None,
+                        projection: None
+                    })))
+        })
+    }
+
+    fn parse_model_transforms(src: &str) -> IResult<&str, ModelTransform> {
+        let input = Parser::space(src);
+        let (input, translate) = Parser::parse_translate(input)?;
+        let input = Parser::space(input);
+        let (input, scale) = Parser::parse_scale(input)?;
+        let input = Parser::space(input);
+        let (input, rotate) = Parser::parse_rotate(input)?;
+        let input = Parser::space(input);
+
+        Ok((input, 
+                ModelTransform{
+                    translate,
+                    scale,
+                    rotate
+                }))
+    }
+
+    fn parse_translate(src: &str) -> IResult<&str, [f32; 3]> {
+        let input = Parser::space(src);
+        Parser::parens(input, |src| {
+            let input = Parser::space(src);
+            let (input, _) = tag("translate")(input)?;
+            let input = Parser::space(input);
+            let (input, x) = Self::parse_pos_dim_value(input, "x".to_string())?;
+            let input = Self::space(input);
+            let (input, y) = Self::parse_pos_dim_value(input, "y".to_string())?;
+            let input = Self::space(input);
+            let (input, z) = Self::parse_pos_dim_value(input, "z".to_string())?;
+            let input = Self::space(input);
+            Ok((input, [x, y, z]))
+        })
+    }
+
+    fn parse_scale(src: &str) -> IResult<&str, [f32; 3]> {
+        let input = Parser::space(src);
+        Parser::parens(input, |src| {
+            let input = Parser::space(src);
+            let (input, _) = tag("scale")(input)?;
+            let input = Parser::space(input);
+            let (input, x) = Self::parse_pos_dim_value(input, "x".to_string())?;
+            let input = Self::space(input);
+            let (input, y) = Self::parse_pos_dim_value(input, "y".to_string())?;
+            let input = Self::space(input);
+            let (input, z) = Self::parse_pos_dim_value(input, "z".to_string())?;
+            let input = Self::space(input);
+            Ok((input, [x, y, z]))
+        })
+    }
+
+    fn parse_rotate(src: &str) -> IResult<&str, (f32, [f32; 3])> {
+        let input = Parser::space(src);
+        Parser::parens(input, |src| {
+            let input = Parser::space(src);
+            let (input, _) = tag("rotate")(input)?;
+            let input = Parser::space(input);
+            let (input, angle) = Self::parse_pos_dim_value(input, "angle".to_string())?;
+            let input = Parser::space(input);
+            let (input, x) = Self::parse_pos_dim_value(input, "x".to_string())?;
+            let input = Self::space(input);
+            let (input, y) = Self::parse_pos_dim_value(input, "y".to_string())?;
+            let input = Self::space(input);
+            let (input, z) = Self::parse_pos_dim_value(input, "z".to_string())?;
+            let input = Self::space(input);
+            Ok((input, (angle, [x, y, z])))
+        })
+    }
+
+    fn parse_model_ops_cmds(src: &str) -> IResult<&str, Command> {
+        let (input, cmd) = alt((
+                Parser::parse_mk_model,
+                Parser::parse_apply_trans,
+                ))(src)?;
+        Ok((input, ModelOp(cmd)))
+    }
+
+    fn parse_mk_model(src: &str) -> IResult<&str, ModelOperation> {
+        let input = Parser::space(src);
+        Parser::parens(input, |src| {
+            let input = Parser::space(src);
+            let (input, _) = tag("mk-model")(input)?;
+            let input = Parser::space(input);
+            let (input, name) = 
+                take_while1::<_, _, ()>(Parser::is_identifier_char)(input.as_bytes())
+                .expect("");
+            let name = from_utf8(name).unwrap();
+            let input = Parser::space(from_utf8(input).unwrap());
+            let (input, vertex_buffer) = 
+                take_while1::<_, _, ()>(Parser::is_identifier_char)(input.as_bytes())
+                .expect("");
+            let vertex_buffer = from_utf8(vertex_buffer).unwrap();
+            let input = Parser::space(from_utf8(input).unwrap());
+            if let Ok((input, topo)) = Parser::parse_topology(input){
+                let topology = Some(topo);
+                let input = Parser::space(input);
+                Ok((input, MkModel(name.to_string(), vertex_buffer.to_string(), topology)))
+            } else{
+                let topology = None;
+                let input = Parser::space(input);
+                Ok((input, MkModel(name.to_string(), vertex_buffer.to_string(), topology)))
+            }
+
+        })
+    }
+
+    fn parse_apply_trans(src: &str) -> IResult<&str, ModelOperation> {
+        let input = Parser::space(src);
+        Parser::parens(input, |src| {
+            let input = Parser::space(src);
+            let (input, _) = tag("apply-trans")(input)?;
+            let input = Parser::space(input);
+            let (input, trans) = 
+                take_while1::<_, _, ()>(Parser::is_identifier_char)(input.as_bytes())
+                .expect("");
+            let input = from_utf8(input).unwrap();
+            let input = Parser::space(input);
+            let (input, model) = 
+                take_while1::<_, _, ()>(Parser::is_identifier_char)(input.as_bytes())
+                .expect("");
+            let input = from_utf8(input).unwrap();
+            let trans = from_utf8(trans).unwrap().to_string();
+            let model = from_utf8(model).unwrap().to_string();
+            Ok((input, ApplyTransform(trans, model)))
+        })
+    }
+
 }

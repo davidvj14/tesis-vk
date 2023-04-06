@@ -4,6 +4,7 @@ mod syntax;
 mod parser;
 mod rendering_pipeline;
 mod tvk_glm;
+mod model;
 use crate::tvk_glm::geometric::*;
 use ui::{Application, AppInfo};
 use winit::{
@@ -12,7 +13,7 @@ use winit::{
 
 fn main() {
     let event_loop = EventLoop::new();
-    let mut code = CODE.to_string();
+    let mut code = CODE2.to_string();
     let mut console = CONSOLE.to_string();
     let mut app = Application::new(&event_loop, &code);
     let win_size = app.windows.get_primary_window().unwrap().inner_size();
@@ -101,5 +102,28 @@ r#"(config (primitive triangle-list)
 (draw vb1)
 (draw vb2)
 "#;
+
+const CODE2: &str = 
+r#"(config (primitive triangle-list)
+           (interpreting-mode manual))
+(def-vertex v1
+    (pos (x -0.75) (y -1) (z 1))
+    (color #FF0000FF))
+(def-vertex v2
+    (pos (x -0.25) (y -0.5) (z 1))
+    (color #00FF00FF))
+(def-vertex v3
+    (pos (x -0.75) (y -0.25) (z 1))
+    (color #0000FFFF))
+(mk-vertex-buffer vb1
+    (v1 v2 v3))
+(mk-model m1 vb1)
+(mk-transform t1 (translate (x 0) (y 0) (z 0))
+                 (scale (x 1) (y 1) (z 1))
+                 (rotate (angle 0) (x 0) (y 0) (z 1)))
+(apply-trans t1 m1)
+(draw m1)
+"#;
+
 
 const CONSOLE: &str = "vk-repl> ";

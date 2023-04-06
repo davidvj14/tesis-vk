@@ -65,7 +65,7 @@ pub fn zero_mat4() -> [[f32; 4]; 4] {
      [0.0, 0.0, 0.0, 0.0],]
 }
 
-pub fn translate_mat4(mat: [[f32; 4]; 4], vec: [f32; 4]) -> [[f32; 4]; 4]{
+pub fn translate_mat4(mat: [[f32; 4]; 4], vec: [f32; 3]) -> [[f32; 4]; 4]{
     let mut result = mat;
     result[3] = vector_scalar_mult4(mat[0], vec[0]);
     result[3] = vec4_addition(result[3], vector_scalar_mult4(mat[1], vec[1]));
@@ -74,7 +74,7 @@ pub fn translate_mat4(mat: [[f32; 4]; 4], vec: [f32; 4]) -> [[f32; 4]; 4]{
     result
 }
 
-pub fn scale_mat4(mat: [[f32; 4]; 4], vec: [f32; 4]) -> [[f32; 4]; 4]{
+pub fn scale_mat4(mat: [[f32; 4]; 4], vec: [f32; 3]) -> [[f32; 4]; 4]{
     let mut result = mat;
     result[0] = vector_scalar_mult4(mat[0], vec[0]);
     result[1] = vector_scalar_mult4(mat[1], vec[1]);
@@ -157,4 +157,16 @@ pub fn perspective_rh_no (fovy: f32, aspect: f32, z_near: f32, z_far: f32)
 
 pub fn radians(degrees: f32) -> f32 {
     degrees * (PI / 180.0)
+}
+
+pub fn mult_mat4(a: [[f32; 4]; 4], b: [[f32; 4]; 4]) -> [[f32; 4]; 4] {
+    let mut result = zero_mat4();
+    for i in 0..4 {
+        for j in 0..4{
+            for k in 0..4{
+                result[i][j] += a[i][k] * b[k][j];
+            }
+        }
+    }
+    result
 }
