@@ -35,19 +35,13 @@ pub struct TransUBO {
 
 impl TransUBO{
     pub fn generate_ubo(trans: &Transform) -> Self {
-        if let Some(m) = trans.model {
-            let model = Self::generate_model_matrix(&m);
+            let model = Self::generate_model_matrix(&trans.model.unwrap());
+            let v = trans.view.unwrap();
+            let p = trans.projection.unwrap();
             TransUBO {
                 model,
-                view: identity_mat4(),
-                projection: identity_mat4()
-            }
-        } else{
-            TransUBO {
-                model: identity_mat4(),
-                view: identity_mat4(),
-                projection: identity_mat4()
-            }
+                view: look_at_rh(v.0, v.1, v.2),
+                projection: perspective_rh_no(p.0, p.1, p.2, p.3)
         }
     }
 

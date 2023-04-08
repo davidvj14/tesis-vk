@@ -104,26 +104,52 @@ r#"(config (primitive triangle-list)
 "#;
 
 const CODE2: &str = 
-r#"(config (primitive triangle-list)
+r#"(config (primitive line-strip)
            (interpreting-mode manual))
 (def-vertex v1
-    (pos (x -0.75) (y -1) (z 1))
-    (color #FF0000FF))
+  (pos (x -0.5) (y -0.5) (z 0))
+  (color #FF0000FF))
 (def-vertex v2
-    (pos (x -0.25) (y -0.5) (z 1))
-    (color #00FF00FF))
+  (pos (x 0.5) (y -0.5) (z 0))
+  (color #00FF00FF))
 (def-vertex v3
-    (pos (x -0.75) (y -0.25) (z 1))
-    (color #0000FFFF))
+  (pos (x 0.5) (y 0.5) (z 0))
+  (color #0000FFFF))
+(def-vertex v4
+  (pos (x -0.5) (y 0.5) (z 0))
+  (color #0000FFFF))
+(def-vertex v5
+  (pos (x -0.5) (y -0.5) (z 0.5))
+  (color #FF0000FF))
+(def-vertex v6
+  (pos (x 0.5) (y -0.5) (z 0.5))
+  (color #00FF00FF))
+(def-vertex v7
+  (pos (x 0.5) (y 0.5) (z 0.5))
+  (color #0000FFFF))
+(def-vertex v8
+  (pos (x -0.5) (y 0.5) (z 0.5))
+  (color #123456FF))
 (mk-vertex-buffer vb1
-    (v1 v2 v3))
+  (v1 v2 v3 v4 v1
+  v5 v6 v2 v6 v7 v3
+  v7 v8 v4 v8 v5))
 (mk-model m1 vb1)
-(mk-transform t1 (translate (x 0) (y 0) (z 0))
-                 (scale (x 1) (y 1) (z 1))
-                 (rotate (angle 0) (x 0) (y 0) (z 1)))
+(mk-transform t1
+  (translate (x 0) (y 0) (z 0))
+  (scale (x 1) (y 1) (z 1))
+  (rotate (angle 0.16) (x 0) (y 0) (z 1)))
+(mk-camera cam1
+  (cam-position (x 2) (y 2) (z 1))
+  (center (x 0) (y 0) (z 0))
+  (up (x 0) (y 0) (z 1)))
+(mk-perspective p1
+ (fovy 0.75)
+ (aspect 1.8)
+ (near 0.1)
+ (far 10.0))
 (apply-trans t1 m1)
-(draw m1)
-"#;
+(draw m1)"#;
 
 
 const CONSOLE: &str = "vk-repl> ";

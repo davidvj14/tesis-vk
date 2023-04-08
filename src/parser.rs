@@ -52,6 +52,8 @@ impl Parser{
                 Parser::parse_mk_vb,
                 Parser::parse_draw,
                 Parser::parse_mk_transform,
+                Parser::parse_mk_camera,
+                Parser::parse_mk_perspective,
                 Parser::parse_model_ops_cmds,
                 ))(code)
     }
@@ -283,6 +285,112 @@ impl Parser{
                     }
             }
             Err(nom::Err::Incomplete(nom::Needed::Unknown))
+        })
+    }
+
+    fn parse_mk_camera(src: &str) -> IResult<&str, Command> {
+        let input = Parser::space(src);
+        Parser::parens(input, |src| {
+            let input = Parser::space(src);
+            let (input, _) = tag("mk-camera")(input)?;
+            let input = Parser::space(input);
+            let (input, name) = 
+                take_while1::<_, _, ()>(Parser::is_identifier_char)(input.as_bytes())
+                .expect("");
+            let name = from_utf8(name).unwrap().to_string();
+            let input = from_utf8(input).unwrap();
+            let (input, eye) =
+                Parser::parse_tagged_vec3("cam-position".to_string(), input)?;
+            let input = Parser::space(input);
+            let (input, center) =
+                Parser::parse_tagged_vec3("center".to_string(), input)?;
+            let input = Parser::space(input);
+            let (input, up) =
+                Parser::parse_tagged_vec3("up".to_string(), input)?;
+            Ok((input,
+                    MkCamera(name, Transform{
+                        model: None,
+                        view: Some((eye, center, up)),
+                        projection: None,
+                    })))
+        })
+    }
+
+    fn parse_tagged_vec3(t: String, src: &str) -> IResult<&str, [f32; 3]> {
+        let input = Parser::space(src);
+        Parser::parens(input, |src| {
+            let input = Parser::space(src);
+            let (input, _) = tag(t.as_str())(input)?;
+            let input = Parser::space(input);
+            let (input, x) = Parser::parse_pos_dim_value(input, "x".to_string())?;
+            let input = Parser::space(input);
+            let (input, y) = Parser::parse_pos_dim_value(input, "y".to_string())?;
+            let input = Parser::space(input);
+            let (input, z) = Parser::parse_pos_dim_value(input, "z".to_string())?;
+            Ok((input, [x, y, z]))
+        })
+    }
+
+    fn parse_mk_perspective(src: &str) -> IResult<&str, Command> {
+        let input = Parser::space(src);
+        Parser::parens(input, |src| {
+            let input = Parser::space(src);
+            let (input, _) = tag("mk-perspective")(input)?;
+            let input = Parser::space(input);
+            let (input, name) = 
+                take_while1::<_, _, ()>(Parser::is_identifier_char)(input.as_bytes())
+                .expect("");
+            let name = from_utf8(name).unwrap().to_string();
+            let input = Parser::space(from_utf8(input).unwrap());
+            let (input, fovy) = Parser::parse_fovy(input)?;
+            let (input, aspect) = Parser::parse_aspect(input)?;
+            let (input, z_near) = Parser::parse_near(input)?;
+            let (input, z_far) = Parser::parse_far(input)?;
+            Ok((input,
+                    MkPerspective(name, Transform{
+                        model: None,
+                        view: None,
+                        projection: Some((fovy, aspect, z_near, z_far))
+                    })))
+        })
+    }
+
+    fn parse_fovy(src: &str) -> IResult<&str, f32> {
+        let input = Parser::space(src);
+        Parser::parens(input, |src| {
+            let input = Parser::space(src);
+            let (input, _) = tag("fovy")(input)?;
+            let input = Parser::space(input);
+            float(input)
+        })
+    }
+
+    fn parse_aspect(src: &str) -> IResult<&str, f32> {
+        let input = Parser::space(src);
+        Parser::parens(input, |src| {
+            let input = Parser::space(src);
+            let (input, _) = tag("aspect")(input)?;
+            let input = Parser::space(input);
+            float(input)
+        })
+    }
+
+    fn parse_near(src: &str) -> IResult<&str, f32> {
+        let input = Parser::space(src);
+        Parser::parens(input, |src| {
+            let input = Parser::space(src);
+            let (input, _) = tag("near")(input)?;
+            let input = Parser::space(input);
+            float(input)
+        })
+    }
+    fn parse_far(src: &str) -> IResult<&str, f32> {
+        let input = Parser::space(src);
+        Parser::parens(input, |src| {
+            let input = Parser::space(src);
+            let (input, _) = tag("far")(input)?;
+            let input = Parser::space(input);
+            float(input)
         })
     }
 

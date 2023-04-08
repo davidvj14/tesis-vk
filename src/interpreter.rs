@@ -16,6 +16,8 @@ pub struct Interpreter{
     pub vb_bindings: HashMap<String, Vec<Vertex>>,
     pub model_bindings: HashMap<String, Model>,
     pub trans_bindings: HashMap<String, Transform>,
+    pub camera_bindings: HashMap<String, Transform>,
+    pub perspective_bindings: HashMap<String, Transform>,
     models_to_send: HashMap<String, Model>,
     sent_models: Vec<String>,
     drawing_mode: PrimitiveTopology,
@@ -30,6 +32,8 @@ impl Interpreter{
             model_bindings: HashMap::new(),
             vb_bindings: HashMap::new(),
             trans_bindings: HashMap::new(),
+            camera_bindings: HashMap::new(),
+            perspective_bindings: HashMap::new(),
             models_to_send: HashMap::new(),
             sent_models: Vec::new(),
             drawing_mode: TriangleList,
@@ -65,8 +69,14 @@ impl Interpreter{
                 Draw(_mode, name) => {
                     self.models_to_send.clear();
                     self.sent_models.clear();
-                    if let Some(m) = self.model_bindings.get(name){
+                    if let Some(mut m) = self.model_bindings.get_mut(name){
                         let mut send= Vec::new();
+                        for (_, v) in &self.perspective_bindings {
+                            m.transforms.projection = v.projection;
+                        }
+                        for (_, v) in &self.camera_bindings {
+                            m.transforms.view = v.view;
+                        }
                         if !(self.sent_models.contains(name)){
                             self.models_to_send.insert(name.to_string(), m.clone());
                             self.sent_models.push(name.clone());
@@ -82,6 +92,21 @@ impl Interpreter{
                         self.trans_bindings.remove(name);
                     }
                     self.trans_bindings.insert(name.clone(), *trans);
+                },
+                MkPerspective(name, perspective) => {
+                    if self.perspective_bindings.contains_key(name){
+                        self.perspective_bindings.remove(name);
+                    }
+                    self.perspective_bindings.insert(name.clone(), *perspective);
+                    for (_, m) in &mut self.model_bindings{
+                        m.transforms.projection = Some(perspective.projection.unwrap());
+                    }
+                },
+                MkCamera(name, cam) => {
+                    if self.camera_bindings.contains_key(name){
+                        self.camera_bindings.remove(name);
+                    }
+                    self.camera_bindings.insert(name.clone(), *cam);
                 },
                 ModelOp(op) => Self::interpret_model_op(
                     &mut self.model_bindings,

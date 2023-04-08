@@ -70,4 +70,6 @@ pub enum Command{
     Draw(Option<PrimitiveTopology>, String), //Asking the engine to draw a vertex buffer with an optional drawing mode. Might change
     ModelOp(ModelOperation),
     MkTransform(String, Transform),
+    MkPerspective(String, Transform),
+    MkCamera(String, Transform),
 }

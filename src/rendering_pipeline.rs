@@ -183,7 +183,7 @@ impl MSAAPipeline{
         render_pass: Arc<RenderPass>,
         topology: PrimitiveTopology
         ) -> (Arc<GraphicsPipeline>, Subpass){
-        let vs = vs2::load(device.clone()).expect("failed to create shader module");
+        let vs = vs::load(device.clone()).expect("failed to create shader module");
         let fs = fs::load(device.clone()).expect("failed to create shader module");
 
         let subpass = Subpass::from(render_pass, 0).unwrap();
@@ -348,23 +348,7 @@ impl MSAAPipeline{
     }
 }
 
-
 mod vs {
-    vulkano_shaders::shader! {
-        ty: "vertex",
-        src: "
-#version 450
-layout(location = 0) in vec3 position;
-layout(location = 1) in vec4 color;
-layout(location = 0) out vec4 v_color;
-void main() {
-    gl_Position = vec4(position, 1.0);
-    v_color = color;
-}"
-    }
-}
-
-mod vs2 {
     vulkano_shaders::shader! {
         ty: "vertex",
         src: "
