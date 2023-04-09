@@ -4,6 +4,7 @@ mod syntax;
 mod parser;
 mod rendering_pipeline;
 mod tvk_glm;
+mod language;
 mod model;
 use crate::tvk_glm::geometric::*;
 use ui::{Application, AppInfo};
@@ -73,35 +74,6 @@ fn main() {
         }
     });
 }
-
-const CODE: &str = 
-r#"(config (primitive triangle-list)
-           (interpreting-mode manual))
-(def-vertex v1
-    (pos (x -0.75) (y -1) (z 1))
-    (color #FF0000FF))
-(def-vertex v2
-    (pos (x -0.25) (y -0.5) (z 1))
-    (color #00FF00FF))
-(def-vertex v3
-    (pos (x -0.75) (y -0.25) (z 1))
-    (color #0000FFFF))
-(def-vertex v4
-    (pos (x 0.75) (y 1) (z 1))
-    (color #FF0000FF))
-(def-vertex v5
-    (pos (x 0.25) (y 0.5) (z 1))
-    (color #00FF00FF))
-(def-vertex v6
-    (pos (x 0.75) (y 0.25) (z 1))
-    (color #0000FFFF))
-(mk-vertex-buffer vb1
-    (v1 v2 v3))
-(mk-vertex-buffer vb2
-    (v4 v5 v6))
-(draw vb1)
-(draw vb2)
-"#;
 
 const CODE2: &str = 
 r#"(config (primitive line-strip)
