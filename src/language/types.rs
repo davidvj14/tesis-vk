@@ -97,16 +97,18 @@ pub enum BasicOp<'a> {
 
 #[derive(Clone, Debug)]
 pub enum TvkObject<'a> {
-    NumberLiteral(f32),
-    Position(Position),
+    FloatLiteral(f32),
+    Atom(&'a str),
+    UIntLiteral(u32),
     Color(Color),
-    Vertex(Vertex),
-    VertexBuffer(VertexBuffer<'a>),
-    IndexBuffer(IndexBuffer),
-    Perspective(Fovy, AspectRatio, ZNear, ZFar),
-    Camera(Camera),
-    Transform(Transform),
-    Model(Model),
+    List(Vec<TvkObject<'a>>),
+    //Vertex(Vertex),
+    //VertexBuffer(VertexBuffer<'a>),
+    //IndexBuffer(IndexBuffer),
+    //Perspective(Fovy, AspectRatio, ZNear, ZFar),
+    //Camera(Camera),
+    //Transform(Transform),
+    //Model(Model),
 }
 
 
@@ -118,7 +120,12 @@ pub enum Drawable<'a> {
 
 #[derive (Clone, Debug)]
 pub enum Expr<'a> {
+    Identifier(&'a str),
+    FloatLiteral(f32),
+    UIntLiteral(u32),
+    List(Vec<Expr<'a>>),
+    Construct(TvkObject<'a>),
     BasicOp(BasicOp<'a>),
-    Define(&'a str, TvkObject<'a>),
+    Define(&'a str, Vec<Expr<'a>>),
     Draw(&'a Drawable<'a>),
 }
