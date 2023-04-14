@@ -21,7 +21,7 @@ impl<'a> Interpreter<'a> {
                 }
                 if let TvkObject::Atom("def") = &l[0] {
                     if let Some(TvkObject::Atom(key)) = &l.get(1) {
-                        if let Some(e) = &l.get(2){
+                        if let Some(e) = &l.get(2) {
                             if let Some(val) = self.eval(e, pipeline) {
                                 self.bindings.insert(key, val);
                             }
@@ -54,15 +54,16 @@ impl<'a> Interpreter<'a> {
                     }
                 }
                 if let TvkObject::Atom("vec3") = &l[0] {
-                    if let Some(TvkObject::List(list)) = &l.get(1){
+                    if let Some(TvkObject::List(list)) = &l.get(1) {
                         println!("\nvec3 list {:?}\n", list);
-                    if let (
-                        Some(TvkObject::FloatLiteral(x)),
-                        Some(TvkObject::FloatLiteral(y)),
-                        Some(TvkObject::FloatLiteral(z)),
-                    ) = (&list.get(0), &list.get(1), &list.get(2)) {
-                        return Some(InnerType::Vec3([*x, *y, *z]));
-                    }
+                        if let (
+                            Some(TvkObject::FloatLiteral(x)),
+                            Some(TvkObject::FloatLiteral(y)),
+                            Some(TvkObject::FloatLiteral(z)),
+                        ) = (&list.get(0), &list.get(1), &list.get(2))
+                        {
+                            return Some(InnerType::Vec3([*x, *y, *z]));
+                        }
                     }
                 }
                 if let TvkObject::Atom("center") = &l[0] {
@@ -193,9 +194,9 @@ impl<'a> Interpreter<'a> {
                 if let TvkObject::Atom("transform") = &l[0] {
                     println!("\nl1 {:?}\n", &l[1]);
                     if let Some(InnerType::Vec3(translate)) = self.eval(&l[1], pipeline) {
-                    println!("\nl2 {:?}\n", &l[2]);
+                        println!("\nl2 {:?}\n", &l[2]);
                         if let Some(InnerType::Vec3(scale)) = self.eval(&l[2], pipeline) {
-                    println!("\nl3 {:?}\n", &l[3]);
+                            println!("\nl3 {:?}\n", &l[3]);
                             if let Some(InnerType::Rotate(rotate)) = self.eval(&l[3], pipeline) {
                                 return Some(InnerType::Transform(Transform {
                                     translate,
@@ -230,12 +231,24 @@ impl<'a> Interpreter<'a> {
                 }
                 if let TvkObject::Atom("topology") = &l[0] {
                     return match &l[1] {
-                        TvkObject::Atom("default") => Some(InnerType::Topology(PrimitiveTopology::TriangleList)),
-                        TvkObject::Atom("triangle-list") => Some(InnerType::Topology(PrimitiveTopology::TriangleList)),
-                        TvkObject::Atom("triangle-strip") => Some(InnerType::Topology(PrimitiveTopology::TriangleStrip)),
-                        TvkObject::Atom("line-list") => Some(InnerType::Topology(PrimitiveTopology::LineList)),
-                        TvkObject::Atom("line-strip") => Some(InnerType::Topology(PrimitiveTopology::LineStrip)),
-                        TvkObject::Atom("point-list") => Some(InnerType::Topology(PrimitiveTopology::PointList)),
+                        TvkObject::Atom("default") => {
+                            Some(InnerType::Topology(PrimitiveTopology::TriangleList))
+                        }
+                        TvkObject::Atom("triangle-list") => {
+                            Some(InnerType::Topology(PrimitiveTopology::TriangleList))
+                        }
+                        TvkObject::Atom("triangle-strip") => {
+                            Some(InnerType::Topology(PrimitiveTopology::TriangleStrip))
+                        }
+                        TvkObject::Atom("line-list") => {
+                            Some(InnerType::Topology(PrimitiveTopology::LineList))
+                        }
+                        TvkObject::Atom("line-strip") => {
+                            Some(InnerType::Topology(PrimitiveTopology::LineStrip))
+                        }
+                        TvkObject::Atom("point-list") => {
+                            Some(InnerType::Topology(PrimitiveTopology::PointList))
+                        }
                         _ => Some(InnerType::Topology(PrimitiveTopology::TriangleList)),
                     };
                 }

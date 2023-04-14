@@ -35,14 +35,14 @@ impl<'a> Parser<'a> {
                 Ok((src, expr)) => {
                     self.source = src;
                     self.exprs.push(expr);
-                },
+                }
                 Err(nom::Err::Incomplete(_)) => {
                     if self.source.len() > 0 {
                         self.source = &self.source[1..];
                         continue;
                     }
                     break;
-                },
+                }
                 _ => self.source = &self.source[1..],
             }
         }
