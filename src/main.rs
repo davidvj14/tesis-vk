@@ -1,47 +1,54 @@
-mod ui;
-mod interpreter;
-mod syntax;
-mod parser;
+mod language;
 mod rendering_pipeline;
 mod tvk_glm;
-mod language;
-mod model;
-use crate::tvk_glm::geometric::*;
-use ui::{Application, AppInfo};
+mod ui;
+use std::collections::HashMap;
+
+use ui::{AppInfo, Application};
 use winit::{
-    event::{Event, WindowEvent}, event_loop::{ControlFlow, EventLoop},
+    event::{Event, WindowEvent},
+    event_loop::{ControlFlow, EventLoop},
 };
 
 fn main() {
     let event_loop = EventLoop::new();
-    let mut nu_pars = language::parser::Parser::new("");
-    nu_pars.parse();
-    let mut code = CODE2.to_string();
+    let mut code = CODE.to_string();
     let mut console = CONSOLE.to_string();
-    let mut app = Application::new(&event_loop, &code);
+    let mut app = Application::new(&event_loop);
     let win_size = app.windows.get_primary_window().unwrap().inner_size();
     let mut app_info = AppInfo::new(
         win_size.into(),
-        win_size.width as f32 / 4.0,
-        win_size.width as f32 / 8.0,
+        win_size.width as f32 / 2.5,
+        win_size.width as f32 / 5.0,
         app.windows.get_primary_window().unwrap().scale_factor(),
-        );
-    app.interpreter.interpret(&mut app.pipeline);
+    );
+    let mut nu_pars = language::parser::Parser::new(&code);
+    let exprs = nu_pars.parse();
+    let mut nu_int = language::interpreter::Interpreter {
+        bindings: HashMap::new(),
+    };
+    for e in &exprs {
+        nu_int.eval(e, &mut app.pipeline);
+    }
     event_loop.run(move |event, _, control_flow| {
         let renderer = app.windows.get_primary_renderer_mut().unwrap();
-        match event{
-            Event::WindowEvent { event, window_id} if window_id == renderer.window().id() => {
+        match event {
+            Event::WindowEvent { event, window_id } if window_id == renderer.window().id() => {
                 let _pass = !app.gui.update(&event);
 
-                match event{
+                match event {
                     WindowEvent::Resized(size) => {
                         renderer.resize();
                         app_info.resize(size.into());
                     }
-                    WindowEvent::ScaleFactorChanged { scale_factor, new_inner_size } => {
+                    WindowEvent::ScaleFactorChanged {
+                        scale_factor,
+                        new_inner_size,
+                    } => {
                         renderer.resize();
                         app_info.rescale(scale_factor);
-                        let (width, height) = (new_inner_size.width as f32, new_inner_size.height as f32);
+                        let (width, height) =
+                            (new_inner_size.width as f32, new_inner_size.height as f32);
                         app_info.resize([width, height]);
                     }
                     WindowEvent::CloseRequested => {
@@ -51,22 +58,35 @@ fn main() {
                 }
             }
             Event::RedrawRequested(window_id) if window_id == window_id => {
-                app.gui.immediate_ui(|gui|{
+                app.gui.immediate_ui(|gui| {
                     Application::gui_panel(
                         &mut app.changed_input,
                         &mut app_info,
                         &mut app.pipeline.vk_ratio,
                         &mut code,
                         &mut console,
-                        gui);
-                    if app.changed_input{
-                        app.interpreter.parser.source = code.clone();
-                        app.interpreter.interpret(&mut app.pipeline);
+                        gui,
+                    );
+                    if app.changed_input {
+                        app.pipeline.models.clear();
+                        app.pipeline.vbs.clear();
                         app.changed_input = false;
+                        let mut nu_pars = language::parser::Parser::new(&code);
+                        let exprs = nu_pars.parse();
+                        let mut nu_int = language::interpreter::Interpreter {
+                            bindings: HashMap::new(),
+                        };
+                        for e in &exprs {
+                            nu_int.eval(e, &mut app.pipeline);
+                        }
                     }
                 });
                 let before_future = renderer.acquire().unwrap();
-                let after_future = app.pipeline.render(before_future, renderer.swapchain_image_view(), &mut app.gui);
+                let after_future = app.pipeline.render(
+                    before_future,
+                    renderer.swapchain_image_view(),
+                    &mut app.gui,
+                );
                 renderer.present(after_future, true);
             }
             Event::MainEventsCleared => {
@@ -77,82 +97,66 @@ fn main() {
     });
 }
 
-const CODE: &str = 
-r#"(config (primitive triangle-list)
-           (interpreting-mode manual))
-(def-vertex v1
-    (pos (x -0.75) (y -1) (z 1))
-    (color #FF0000FF))
-(def-vertex v2
-    (pos (x -0.25) (y -0.5) (z 1))
-    (color #00FF00FF))
-(def-vertex v3
-    (pos (x -0.75) (y -0.25) (z 1))
-    (color #0000FFFF))
-(def-vertex v4
-    (pos (x 0.75) (y 1) (z 1))
-    (color #FF0000FF))
-(def-vertex v5
-    (pos (x 0.25) (y 0.5) (z 1))
-    (color #00FF00FF))
-(def-vertex v6
-    (pos (x 0.75) (y 0.25) (z 1))
-    (color #0000FFFF))
-(mk-vertex-buffer vb1
-    (v1 v2 v3))
-(mk-vertex-buffer vb2
-    (v4 v5 v6))
-(draw vb1)
-(draw vb2)
-"#;
-
-const CODE2: &str = 
-r#"(config (primitive line-strip)
-           (interpreting-mode manual))
-(def-vertex v1
-  (pos (x -0.5) (y -0.5) (z 0))
-  (color #FF0000FF))
-(def-vertex v2
-  (pos (x 0.5) (y -0.5) (z 0))
-  (color #00FF00FF))
-(def-vertex v3
-  (pos (x 0.5) (y 0.5) (z 0))
-  (color #0000FFFF))
-(def-vertex v4
-  (pos (x -0.5) (y 0.5) (z 0))
-  (color #0000FFFF))
-(def-vertex v5
-  (pos (x -0.5) (y -0.5) (z 0.5))
-  (color #FF0000FF))
-(def-vertex v6
-  (pos (x 0.5) (y -0.5) (z 0.5))
-  (color #00FF00FF))
-(def-vertex v7
-  (pos (x 0.5) (y 0.5) (z 0.5))
-  (color #0000FFFF))
-(def-vertex v8
-  (pos (x -0.5) (y 0.5) (z 0.5))
-  (color #123456FF))
-(mk-vertex-buffer vb1
-  (v1 v2 v3 v4 v1
-  v5 v6 v2 v6 v7 v3
-  v7 v8 v4 v8 v5))
-(mk-model m1 vb1)
-(mk-transform t1
-  (translate (x 0) (y 0) (z 0))
-  (scale (x 1) (y 1) (z 1))
-  (rotate (angle 0.16) (x 0) (y 0) (z 1)))
-(mk-camera cam1
-  (cam-position (x 2) (y 2) (z 1))
-  (center (x 0) (y 0) (z 0))
-  (up (x 0) (y 0) (z 1)))
-(mk-perspective p1
- (fovy 0.75)
- (aspect 1.8)
- (near 0.1)
- (far 10.0))
-(apply-trans t1 m1)
+const CODE: &str = r#"(config (primitive triangle-list)
+(interpreting-mode manual))
+(def p1 (position
+  (x -0.5) (y 0.0) (z -0.5)))
+(def p2 (position
+  (x 0.5) (y 0.0) (z -0.5)))
+(def p3 (position
+  (x 0.5) (y 0.0) (z 0.5)))
+(def p4 (position
+  (x -0.5) (y 0.0) (z 0.5)))
+(def p5 (position
+  (x -0.5) (y 1) (z -0.5)))
+(def p6 (position
+  (x 0.5) (y 1) (z -0.5)))
+(def p7 (position
+  (x 0.5) (y 1) (z 0.5)))
+(def p8 (position
+  (x -0.5) (y 1) (z 0.5)))
+(def red (color #FF0000FF))
+(def green (color #00FF00FF))
+(def blue (color #0000FFFF))
+(def v1 (vertex
+  (position p1) (color red)))
+(def v2 (vertex
+  (position p2) (color green)))
+(def v3 (vertex
+  (position p3) (color blue)))
+(def v4 (vertex
+  (position p4) (color red)))
+(def v5 (vertex
+  (position p5) (color red)))
+(def v6 (vertex 
+  (position p6) (color green)))
+(def v7 (vertex
+  (position p7) (color blue)))
+(def v8 (vertex
+  (position p8) (color red)))
+(def vb (vertex-buffer
+  (v1 v2 v3 v4 v5 v6 v7 v8)))
+(def ib (index-buffer
+  (0 1 2 3 0
+   4 5 1 5 6 2
+   6 7 3 7 4)))
+(def pers (perspective
+  (fovy 0.75)
+  (z-near 0.0001)
+  (z-far 1000.0)))
+(def cam1 (camera
+  (position (x 2) (y 3) (z 4))
+  (center (x 0.0) (y 0.0) (z 0.0))
+  (up (x 0.0) (y 1.0) (z 0.0))
+  (perspective pers)))
+(def cam2 (camera
+  (position (x 5) (y 6) (z 7))
+  (center (x 0.0) (y 0.0) (z 0.0))
+  (up (x 0.0) (y 1.0) (z 0.0))
+  (perspective pers)))
+(def m1 (model
+  vb ib (topology line-strip)
+  (transform default) cam1))
 (draw m1)"#;
-
 
 const CONSOLE: &str = "vk-repl> ";

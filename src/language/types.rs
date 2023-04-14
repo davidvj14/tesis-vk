@@ -1,7 +1,10 @@
-#![allow(unused)]
-
 use bytemuck::{Pod, Zeroable};
 use vulkano::pipeline::graphics::input_assembly::PrimitiveTopology;
+
+use crate::tvk_glm::{
+    identity_mat4, look_at_rh, mult_mat4, perspective_rh_no, rotate_mat4, scale_mat4,
+    translate_mat4,
+};
 
 type Vec3 = [f32; 3];
 type Vec4 = [f32; 4];
@@ -20,19 +23,13 @@ vulkano::impl_vertex!(Vertex, position, color);
 type Angle = f32;
 type Center = Vec3;
 type Up = Vec3;
-type Fovy = f32;
-type AspectRatio = f32;
-type ZNear = f32;
-type ZFar = f32;
-
-type PerspectiveMat4 = [[f32; 4]; 4];
 
 #[derive(Clone, Copy, Debug)]
 pub struct Camera {
-    position: Position,
-    center: Center,
-    up: Up,
-    perspective: (Fovy, AspectRatio, ZNear, ZFar),
+    pub position: Position,
+    pub center: Center,
+    pub up: Up,
+    pub perspective: [f32; 3],
 }
 
 impl Default for Camera {
@@ -41,17 +38,16 @@ impl Default for Camera {
             position: [2.0, 2.0, 2.0],
             center: [0.0, 0.0, 0.0],
             up: [0.0, 1.0, 0.0],
-            perspective: (0.75, 4.0 / 3.0, 0.1, 10.0),
+            perspective: [0.75, 0.1, 10.0],
         }
     }
 }
 
 #[derive(Clone, Debug)]
 pub struct Transform {
-    translate: Vec3,
-    scale: Vec3,
-    rotate: (Angle, Vec3),
-    camera: Camera,
+    pub translate: Vec3,
+    pub scale: Vec3,
+    pub rotate: (Angle, Vec3),
 }
 
 impl Default for Transform {
@@ -59,21 +55,21 @@ impl Default for Transform {
         Self {
             translate: [0.0, 0.0, 0.0],
             scale: [1.0, 1.0, 1.0],
-            rotate: (0.0, [0.0, 0.0, 0.0]),
-            camera: Camera::default(),
+            rotate: (0.0, [0.0, 1.0, 0.0]),
         }
     }
 }
 
-type VertexBuffer<'a> = Vec<&'a str>;
+type VertexBuffer = Vec<Vertex>;
 type IndexBuffer = Vec<u32>;
 
 #[derive(Clone, Debug)]
 pub struct Model {
-    vertices: Vec<Vertex>,
-    indices: Vec<u32>,
-    topology: PrimitiveTopology,
-    transforms: Transform,
+    pub vertices: Vec<Vertex>,
+    pub indices: Vec<u32>,
+    pub topology: PrimitiveTopology,
+    pub transforms: Transform,
+    pub camera: Camera,
 }
 
 impl Default for Model {
@@ -83,17 +79,43 @@ impl Default for Model {
             indices: Vec::new(),
             topology: PrimitiveTopology::TriangleList,
             transforms: Transform::default(),
+            camera: Camera::default(),
         }
     }
 }
 
-#[derive (Clone, Debug)]
+impl Model {
+    pub fn generate_mvp_mats(&self, dimensions: [u32; 2]) -> [[[f32; 4]; 4]; 3] {
+        let translate = translate_mat4(identity_mat4(), self.transforms.translate);
+        let scale = scale_mat4(identity_mat4(), self.transforms.scale);
+        let rotate = rotate_mat4(
+            identity_mat4(),
+            self.transforms.rotate.0,
+            self.transforms.rotate.1,
+        );
+        let model = mult_mat4(translate, rotate);
+        let model = mult_mat4(model, scale);
+        let cam = self.camera;
+        let view = look_at_rh(cam.position, cam.center, cam.up);
+        let aspect_ratio = dimensions[0] as f32 / dimensions[1] as f32;
+        let projection = perspective_rh_no(
+            cam.perspective[0],
+            aspect_ratio,
+            cam.perspective[1],
+            cam.perspective[2],
+        );
+        [model, view, projection]
+    }
+}
+
+/*#[derive(Clone, Debug)]
 pub enum BasicOp<'a> {
     Add(Vec<TvkObject<'a>>),
     Sub(Vec<TvkObject<'a>>),
     Mul(Vec<TvkObject<'a>>),
     Div(Vec<TvkObject<'a>>),
 }
+*/
 
 #[derive(Clone, Debug)]
 pub enum TvkObject<'a> {
@@ -102,7 +124,7 @@ pub enum TvkObject<'a> {
     UIntLiteral(u32),
     Color(Color),
     List(Vec<TvkObject<'a>>),
-    //Vertex(Vertex),
+    //Vertex(Vertex)g
     //VertexBuffer(VertexBuffer<'a>),
     //IndexBuffer(IndexBuffer),
     //Perspective(Fovy, AspectRatio, ZNear, ZFar),
@@ -111,21 +133,20 @@ pub enum TvkObject<'a> {
     //Model(Model),
 }
 
-
-#[derive (Clone, Debug)]
-pub enum Drawable<'a> {
-    VertexBuffer(VertexBuffer<'a>),
+#[derive(Clone, Debug)]
+pub enum InnerType {
+    Float(f32),
+    UInt(u32),
+    Position(Position),
+    Rotate((Angle, Vec3)),
+    Topology(PrimitiveTopology),
+    Color(Color),
+    Vec3([f32; 3]),
+    Vertex(Vertex),
+    VertexBuffer(VertexBuffer),
+    IndexBuffer(IndexBuffer),
+    Perspective([f32; 3]),
+    Camera(Camera),
+    Transform(Transform),
     Model(Model),
-}
-
-#[derive (Clone, Debug)]
-pub enum Expr<'a> {
-    Identifier(&'a str),
-    FloatLiteral(f32),
-    UIntLiteral(u32),
-    List(Vec<Expr<'a>>),
-    Construct(TvkObject<'a>),
-    BasicOp(BasicOp<'a>),
-    Define(&'a str, Vec<Expr<'a>>),
-    Draw(&'a Drawable<'a>),
 }
