@@ -100,21 +100,21 @@ fn main() {
 const CODE: &str = r#"(config (primitive triangle-list)
 (interpreting-mode manual))
 (def p1 (position
-  (x -0.5) (y 0.0) (z -0.5)))
+  (x -0.5) (y -0.5) (z -0.5)))
 (def p2 (position
-  (x 0.5) (y 0.0) (z -0.5)))
+  (x 0.5) (y -0.5) (z -0.5)))
 (def p3 (position
-  (x 0.5) (y 0.0) (z 0.5)))
+  (x 0.5) (y -0.5) (z 0.5)))
 (def p4 (position
-  (x -0.5) (y 0.0) (z 0.5)))
+  (x -0.5) (y -0.5) (z 0.5)))
 (def p5 (position
-  (x -0.5) (y 1) (z -0.5)))
+  (x -0.5) (y 0.5) (z -0.5)))
 (def p6 (position
-  (x 0.5) (y 1) (z -0.5)))
+  (x 0.5) (y 0.5) (z -0.5)))
 (def p7 (position
-  (x 0.5) (y 1) (z 0.5)))
+  (x 0.5) (y 0.5) (z 0.5)))
 (def p8 (position
-  (x -0.5) (y 1) (z 0.5)))
+  (x -0.5) (y 0.5) (z 0.5)))
 (def red (color #FF0000FF))
 (def green (color #00FF00FF))
 (def blue (color #0000FFFF))
