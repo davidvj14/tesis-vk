@@ -143,8 +143,8 @@ impl<'a> Interpreter<'a> {
                                 match &l.get(2) {
                                     Some(e2) => {
                                         if let Some(InnerType::Position(position)) = self.eval(&e1, pipeline) {
-                                            if let Some(InnerType::Color(color)) = self.eval(&e2, pipeline) {
-                                                return Some(InnerType::Vertex(Vertex { position, color }));
+                                            if let Some(InnerType::Position(uv)) = self.eval(&e2, pipeline) {
+                                                return Some(InnerType::Vertex(Vertex { position, uv: [uv[0], uv[1]] }));
                                             }
                                         }
                                         return None;
@@ -328,7 +328,7 @@ impl<'a> Interpreter<'a> {
                         }
                     },
                     TvkObject::Atom("model") => {
-                        if l.len() == 6 {
+                        if l.len() == 7 {
                             if let Some(InnerType::VertexBuffer(vertices)) = self.eval(&l[1], pipeline) {
                                 if let Some(InnerType::IndexBuffer(indices)) = self.eval(&l[2], pipeline) {
                                     if let Some(InnerType::Topology(topology)) = self.eval(&l[3], pipeline)
@@ -339,13 +339,20 @@ impl<'a> Interpreter<'a> {
                                             if let Some(InnerType::Camera(camera)) =
                                                 self.eval(&l[5], pipeline)
                                             {
-                                                return Some(InnerType::Model(Model {
-                                                    vertices,
-                                                    indices,
-                                                    topology,
-                                                    transforms,
-                                                    camera,
-                                                }));
+                                                println!("\n\n{:?}\n\n", l);
+                                                if let Some(InnerType::Texture(texture_data)) =
+                                                    self.eval(&l[6], pipeline)
+                                                {
+                                                    return Some(InnerType::Model(Model {
+                                                        vertices,
+                                                        indices,
+                                                        topology,
+                                                        transforms,
+                                                        camera,
+                                                        texture_data,
+                                                        texture: None,
+                                                }))
+                                                };
                                             }
                                         }
                                     }
@@ -372,6 +379,14 @@ impl<'a> Interpreter<'a> {
                             }
                         } else {
                             return None;
+                        }
+                    },
+                    TvkObject::Atom("texture") => {
+                        if l.len() == 2 {
+                            if let TvkObject::Atom(path) = &l[1] {
+                                let (data, dims) = pipeline.load_texture_image(path);
+                                return Some(InnerType::Texture((data, dims)));
+                            }
                         }
                     }
                     _ => return None,

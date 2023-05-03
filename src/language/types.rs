@@ -1,5 +1,7 @@
+use std::sync::Arc;
+
 use bytemuck::{Pod, Zeroable};
-use vulkano::pipeline::graphics::input_assembly::PrimitiveTopology;
+use vulkano::{pipeline::graphics::input_assembly::PrimitiveTopology, image::{ImageDimensions, ImmutableImage, view::ImageView}};
 
 use crate::tvk_glm::{
     identity_mat4, look_at_rh, mult_mat4, perspective_rh_no, rotate_mat4, scale_mat4,
@@ -16,9 +18,9 @@ type Color = Vec4;
 #[derive(Clone, Copy, Debug, Default, Pod, Zeroable)]
 pub struct Vertex {
     pub position: Position,
-    pub color: Color,
+    pub uv: [f32; 2]
 }
-vulkano::impl_vertex!(Vertex, position, color);
+vulkano::impl_vertex!(Vertex, position, uv);
 
 type Angle = f32;
 type Center = Vec3;
@@ -70,6 +72,8 @@ pub struct Model {
     pub topology: PrimitiveTopology,
     pub transforms: Transform,
     pub camera: Camera,
+    pub texture_data: (Vec<u8>, ImageDimensions),
+    pub texture: Option<Arc<ImageView<ImmutableImage>>>,
 }
 
 impl Default for Model {
@@ -80,6 +84,8 @@ impl Default for Model {
             topology: PrimitiveTopology::TriangleList,
             transforms: Transform::default(),
             camera: Camera::default(),
+            texture_data: (Vec::new(), ImageDimensions::Dim1d { width: 0, array_layers: 0}),
+            texture: None,
         }
     }
 }
@@ -149,4 +155,5 @@ pub enum InnerType {
     Camera(Camera),
     Transform(Transform),
     Model(Model),
+    Texture((Vec<u8>, ImageDimensions)),
 }

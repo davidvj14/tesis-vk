@@ -70,7 +70,8 @@ impl<'a> Parser<'a> {
     }
 
     fn is_atom_char(c: u8) -> bool {
-        is_alphanumeric(c) || c == b'-' || c == b'_'
+        is_alphanumeric(c) || c == b'-' || c == b'_' ||
+            c == b'/' || c == b'\\' || c == b'.'
     }
 
     fn parse_atom(src: &'a str) -> IResult<&'a str, TvkObject<'a>> {

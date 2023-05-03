@@ -119,13 +119,13 @@ const CODE: &str = r#"(config (primitive triangle-list)
 (def green (color #00FF00FF))
 (def blue (color #0000FFFF))
 (def v1 (vertex
-  (position p1) (color red)))
+  (position p1) (position (x 0.0) (y 0.0) (z 0.0))))
 (def v2 (vertex
-  (position p2) (color green)))
+  (position p2) (position (x 1.0) (y 0.0) (z 0.0))))
 (def v3 (vertex
-  (position p3) (color blue)))
+  (position p3) (position (x 1.0) (y 1.0) (z 0.0))))
 (def v4 (vertex
-  (position p4) (color red)))
+  (position p4) (position (x 0.0) (y 1.0) (z 0.0))))
 (def v5 (vertex
   (position p5) (color red)))
 (def v6 (vertex 
@@ -137,15 +137,14 @@ const CODE: &str = r#"(config (primitive triangle-list)
 (def vb (vertex-buffer
   (v1 v2 v3 v4 v5 v6 v7 v8)))
 (def ib (index-buffer
-  (0 1 2 3 0
-   4 5 1 5 6 2
-   6 7 3 7 4)))
+  (0 1 2
+   0 2 3)))
 (def pers (perspective
   (fovy 0.75)
   (z-near 0.0001)
   (z-far 1000.0)))
 (def cam1 (camera
-  (position (x 2) (y 3) (z 4))
+  (position (x 2) (y 2) (z 2))
   (center (x 0.0) (y 0.0) (z 0.0))
   (up (x 0.0) (y 1.0) (z 0.0))
   (perspective pers)))
@@ -154,9 +153,10 @@ const CODE: &str = r#"(config (primitive triangle-list)
   (center (x 0.0) (y 0.0) (z 0.0))
   (up (x 0.0) (y 1.0) (z 0.0))
   (perspective pers)))
+(def tex (texture /Users/david/buap/tesis-vk/src/textures/diamond.png))
 (def m1 (model
-  vb ib (topology line-strip)
-  (transform default) cam1))
+  vb ib (topology default)
+  (transform default) cam1 tex))
 (draw m1)"#;
 
 const CONSOLE: &str = "vk-repl> ";

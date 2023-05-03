@@ -4,6 +4,7 @@ use std::{
     collections::{BTreeMap, HashMap},
     convert::TryFrom,
     sync::Arc,
+    io::Cursor,
 };
 use vulkano::{
     buffer::{BufferUsage, CpuAccessibleBuffer, TypedBufferAccess},
@@ -20,7 +21,7 @@ use vulkano::{
     },
     device::{Device, Queue},
     format::Format,
-    image::{view::ImageView, AttachmentImage, ImageAccess, ImageViewAbstract, SampleCount},
+    image::{view::ImageView, ImageDimensions, AttachmentImage, ImageAccess, ImageViewAbstract, SampleCount, ImmutableImage, MipmapsCount},
     memory::allocator::StandardMemoryAllocator,
     pipeline::{
         graphics::{
@@ -32,13 +33,14 @@ use vulkano::{
         GraphicsPipeline, Pipeline,
     },
     render_pass::{Framebuffer, FramebufferCreateInfo, RenderPass, Subpass},
-    shader::ShaderStage,
-    sync::GpuFuture,
+    shader::ShaderStages,
+    sync::GpuFuture, sampler::{Sampler, SamplerCreateInfo, Filter, SamplerMipmapMode, SamplerAddressMode},
 };
 use vulkano_util::renderer::SwapchainImageView;
+use png;
 
 pub struct MSAAPipeline {
-    allocator: Arc<StandardMemoryAllocator>,
+    pub allocator: Arc<StandardMemoryAllocator>,
     queue: Arc<Queue>,
     render_pass: Arc<RenderPass>,
     current_primitive: PrimitiveTopology,
@@ -47,6 +49,7 @@ pub struct MSAAPipeline {
     intermediary: Arc<ImageView<AttachmentImage>>,
     pub models: Vec<types::Model>,
     pub vbs: Vec<Vec<types::Vertex>>,
+    sampler: Arc<Sampler>,
     command_buffer_allocator: StandardCommandBufferAllocator,
     pub vk_ratio: f32,
 }
@@ -106,6 +109,18 @@ impl MSAAPipeline {
         )
         .unwrap();
 
+        let sampler = Sampler::new(
+            queue.device().clone(),
+            SamplerCreateInfo {
+                mag_filter: Filter::Linear,
+                min_filter: Filter::Linear,
+                mipmap_mode: SamplerMipmapMode::Nearest,
+                address_mode: [SamplerAddressMode::Repeat; 3],
+                mip_lod_bias: 0.0,
+                ..Default::default()
+            },
+            ).unwrap();
+
         Self {
             allocator: allocator.clone(),
             queue,
@@ -116,6 +131,7 @@ impl MSAAPipeline {
             intermediary,
             models: Vec::new(),
             vbs: Vec::new(),
+            sampler,
             command_buffer_allocator,
             vk_ratio: 1.0,
         }
@@ -224,6 +240,24 @@ impl MSAAPipeline {
             CommandBufferUsage::OneTimeSubmit,
         )
         .unwrap();
+
+        for mut model in &mut self.models {
+            let mut texture: Option<Arc<ImageView<_>>> = None;
+
+            let texture = texture.get_or_insert_with(|| {
+                let image = ImmutableImage::from_iter(
+                    &self.allocator,
+                    model.texture_data.0.iter().cloned(),
+                    model.texture_data.1,
+                    MipmapsCount::One,
+                    Format::R8G8B8A8_SRGB,
+                    &mut builder,
+                    )
+                    .unwrap();
+                ImageView::new_default(image).unwrap()
+            });
+            model.texture = Some(texture.clone());
+        }
 
         let dimensions = image.image().dimensions().width_height();
         let mut vk_dimensions = dimensions;
@@ -358,23 +392,16 @@ impl MSAAPipeline {
             };
             let desc_set_layout_binding = DescriptorSetLayoutBinding {
                 descriptor_type: vulkano::descriptor_set::layout::DescriptorType::UniformBuffer,
-                descriptor_count: 1,
+                descriptor_count: 2,
                 variable_descriptor_count: false,
-                stages: ShaderStage::Vertex.into(),
+                stages: ShaderStages { vertex: true, fragment: true, ..Default::default()},
                 immutable_samplers: [].to_vec(),
                 _ne: pool._ne,
             };
 
             let mut bind = BTreeMap::new();
             bind.insert(0u32, desc_set_layout_binding);
-            let desc_set_layout = DescriptorSetLayout::new(
-                self.queue.device().clone(),
-                vulkano::descriptor_set::layout::DescriptorSetLayoutCreateInfo {
-                    bindings: bind,
-                    ..Default::default()
-                },
-            )
-            .unwrap();
+
             let unibuffer = CpuAccessibleBuffer::from_data(
                 &self.allocator,
                 BufferUsage {
@@ -386,10 +413,15 @@ impl MSAAPipeline {
             )
             .unwrap();
             let desc_alloca = StandardDescriptorSetAllocator::new(self.queue.device().clone());
+
             let desc_set = PersistentDescriptorSet::new(
                 &desc_alloca,
-                desc_set_layout,
-                [WriteDescriptorSet::buffer(0, unibuffer.clone())],
+                self.get_current_pipeline().layout().set_layouts().get(0).unwrap().clone(),
+                [
+                WriteDescriptorSet::buffer(0, unibuffer.clone()),
+                WriteDescriptorSet::image_view_sampler(1,
+                    model.texture.as_ref().unwrap().clone(), self.sampler.clone())
+                ],
             )
             .unwrap();
             builder
@@ -414,6 +446,31 @@ impl MSAAPipeline {
                 .unwrap();
         }
     }
+
+
+    pub fn load_texture_image(&self, path: &str) -> (Vec<u8>, ImageDimensions) {
+        let png_bytes = std::fs::read(path).expect("error loading texture");
+        let cursor = Cursor::new(png_bytes);
+        let decoder = png::Decoder::new(cursor);
+        let mut reader = decoder.read_info().unwrap();
+        let info = reader.info();
+        let image_dimensions = ImageDimensions::Dim2d {
+            width: info.width,
+            height: info.height,
+            array_layers: 1,
+        };
+        let mut image_data = Vec::new();
+        let depth: u32 = match info.bit_depth {
+            png::BitDepth::One => 1,
+            png::BitDepth::Two => 2,
+            png::BitDepth::Four => 4,
+            png::BitDepth::Eight => 8,
+            png::BitDepth::Sixteen => 16,
+        };
+        image_data.resize((info.width * info.height * depth) as usize, 0);
+        reader.next_frame(&mut image_data).unwrap();
+        (image_data, image_dimensions)
+    }
 }
 
 mod vs {
@@ -429,13 +486,13 @@ layout(binding = 0) uniform UniformBufferObject {
 } ubo;
 
 layout(location = 0) in vec3 position;
-layout(location = 1) in vec4 color;
+layout(location = 1) in vec2 uv;
 
-layout(location = 0) out vec4 fragColor;
+layout(location = 0) out vec2 tex_coords;
 
 void main() {
     gl_Position = ubo.proj * ubo.view * ubo.model * vec4(position, 1.0);
-    fragColor = color;
+    tex_coords = uv;
 }"
     }
 }
@@ -445,10 +502,13 @@ mod fs {
         ty: "fragment",
         src: "
 #version 450
-layout(location = 0) in vec4 v_color;
+layout(location = 0) in vec2 tex_coords;
 layout(location = 0) out vec4 f_color;
+
+layout(set = 0, binding = 1) uniform sampler2D tex;
+
 void main() {
-    f_color = v_color;
+    f_color = texture(tex, tex_coords);
 }"
     }
 }
