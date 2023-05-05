@@ -15,7 +15,7 @@ use vulkano::{
     },
     descriptor_set::{
         allocator::StandardDescriptorSetAllocator,
-        layout::{DescriptorSetLayout, DescriptorSetLayoutBinding},
+        layout::DescriptorSetLayoutBinding,
         pool::DescriptorPoolCreateInfo,
         PersistentDescriptorSet, WriteDescriptorSet,
     },

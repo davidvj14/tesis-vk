@@ -339,7 +339,6 @@ impl<'a> Interpreter<'a> {
                                             if let Some(InnerType::Camera(camera)) =
                                                 self.eval(&l[5], pipeline)
                                             {
-                                                println!("\n\n{:?}\n\n", l);
                                                 if let Some(InnerType::Texture(texture_data)) =
                                                     self.eval(&l[6], pipeline)
                                                 {
