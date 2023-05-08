@@ -153,7 +153,7 @@ const CODE: &str = r#"(config (primitive triangle-list)
   (center (x 0.0) (y 0.0) (z 0.0))
   (up (x 0.0) (y 1.0) (z 0.0))
   (perspective pers)))
-(def tex (texture /Users/david/buap/tesis-vk/src/textures/diamond.png))
+(def tex (texture textures/diamond.png))
 (def m1 (model
   vb ib (topology default)
   (transform default) cam1 tex))
