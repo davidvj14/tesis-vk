@@ -18,9 +18,17 @@ type Color = Vec4;
 #[derive(Clone, Copy, Debug, Default, Pod, Zeroable)]
 pub struct Vertex {
     pub position: Position,
+    pub color: Color,
+}
+vulkano::impl_vertex!(Vertex, position, color);
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, Pod, Zeroable)]
+pub struct TextureVertex {
+    pub position: Position,
     pub uv: [f32; 2]
 }
-vulkano::impl_vertex!(Vertex, position, uv);
+vulkano::impl_vertex!(TextureVertex, position, uv);
 
 type Angle = f32;
 type Center = Vec3;
@@ -130,13 +138,6 @@ pub enum TvkObject<'a> {
     UIntLiteral(u32),
     Color(Color),
     List(Vec<TvkObject<'a>>),
-    //Vertex(Vertex)g
-    //VertexBuffer(VertexBuffer<'a>),
-    //IndexBuffer(IndexBuffer),
-    //Perspective(Fovy, AspectRatio, ZNear, ZFar),
-    //Camera(Camera),
-    //Transform(Transform),
-    //Model(Model),
 }
 
 #[derive(Clone, Debug)]
@@ -149,6 +150,7 @@ pub enum InnerType {
     Color(Color),
     Vec3([f32; 3]),
     Vertex(Vertex),
+    TextureVertex(TextureVertex),
     VertexBuffer(VertexBuffer),
     IndexBuffer(IndexBuffer),
     Perspective([f32; 3]),
