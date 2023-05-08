@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use bytemuck::{Pod, Zeroable};
-use vulkano::{pipeline::graphics::input_assembly::PrimitiveTopology, image::{ImageDimensions, ImmutableImage, view::ImageView}};
+use vulkano::image::{ImageDimensions, ImmutableImage, view::ImageView};
 
 use crate::tvk_glm::{
     identity_mat4, look_at_rh, mult_mat4, perspective_rh_no, rotate_mat4, scale_mat4,
@@ -71,13 +71,14 @@ impl Default for Transform {
 }
 
 type VertexBuffer = Vec<Vertex>;
+type TexVertexBuffer = Vec<TextureVertex>;
 type IndexBuffer = Vec<u32>;
 
 #[derive(Clone, Debug)]
 pub struct Model {
-    pub vertices: Vec<Vertex>,
+    pub vertices: Vec<TextureVertex>,
     pub indices: Vec<u32>,
-    pub topology: PrimitiveTopology,
+    pub topology: String,
     pub transforms: Transform,
     pub camera: Camera,
     pub texture_data: (Vec<u8>, ImageDimensions),
@@ -89,7 +90,7 @@ impl Default for Model {
         Self {
             vertices: Vec::new(),
             indices: Vec::new(),
-            topology: PrimitiveTopology::TriangleList,
+            topology: "RESERVED_TRIANGLE_LIST".to_string(),
             transforms: Transform::default(),
             camera: Camera::default(),
             texture_data: (Vec::new(), ImageDimensions::Dim1d { width: 0, array_layers: 0}),
@@ -146,12 +147,13 @@ pub enum InnerType {
     UInt(u32),
     Position(Position),
     Rotate((Angle, Vec3)),
-    Topology(PrimitiveTopology),
+    Topology(String),
     Color(Color),
     Vec3([f32; 3]),
     Vertex(Vertex),
     TextureVertex(TextureVertex),
     VertexBuffer(VertexBuffer),
+    TexVertexBuffer(TexVertexBuffer),
     IndexBuffer(IndexBuffer),
     Perspective([f32; 3]),
     Camera(Camera),

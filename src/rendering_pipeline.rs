@@ -33,7 +33,7 @@ use vulkano::{
         GraphicsPipeline, Pipeline,
     },
     render_pass::{Framebuffer, FramebufferCreateInfo, RenderPass, Subpass},
-    shader::ShaderStages,
+    shader::{ShaderStages, ShaderModule},
     sync::GpuFuture, sampler::{Sampler, SamplerCreateInfo, Filter, SamplerMipmapMode, SamplerAddressMode},
 };
 use vulkano_util::renderer::SwapchainImageView;
@@ -44,7 +44,7 @@ pub struct MSAAPipeline {
     queue: Arc<Queue>,
     render_pass: Arc<RenderPass>,
     current_primitive: PrimitiveTopology,
-    pipelines: HashMap<PrimitiveTopology, Arc<GraphicsPipeline>>,
+    pipelines: HashMap<String, Arc<GraphicsPipeline>>,
     subpass: Subpass,
     intermediary: Arc<ImageView<AttachmentImage>>,
     pub models: Vec<types::Model>,
@@ -66,40 +66,83 @@ impl MSAAPipeline {
 
         let mut pipelines = HashMap::new();
 
-        let (pipeline, subpass) = Self::create_pipeline(
+        let vs = vs::load(queue.device().clone()).expect("failed to load shader module");
+        let fs = fs::load(queue.device().clone()).expect("failed to load shader module");
+
+        let (pipeline, _) = Self::create_pipeline(
             queue.device().clone(),
             render_pass.clone(),
             PrimitiveTopology::PointList,
+            vs.clone(), fs.clone()
         );
-        pipelines.insert(PrimitiveTopology::PointList, pipeline);
+        pipelines.insert("RESERVED_POINT_LIST".to_string(), pipeline);
 
         let (pipeline, _) = Self::create_pipeline(
             queue.device().clone(),
             render_pass.clone(),
             PrimitiveTopology::LineList,
+            vs.clone(), fs.clone()
         );
-        pipelines.insert(PrimitiveTopology::LineList, pipeline);
+        pipelines.insert("RESERVED_LINE_LIST".to_string(), pipeline);
 
         let (pipeline, _) = Self::create_pipeline(
             queue.device().clone(),
             render_pass.clone(),
             PrimitiveTopology::LineStrip,
+            vs.clone(), fs.clone()
         );
-        pipelines.insert(PrimitiveTopology::LineStrip, pipeline);
+        pipelines.insert("RESERVED_LINE_STRIP".to_string(), pipeline);
 
         let (pipeline, _) = Self::create_pipeline(
             queue.device().clone(),
             render_pass.clone(),
             PrimitiveTopology::TriangleStrip,
+            vs.clone(), fs.clone()
         );
-        pipelines.insert(PrimitiveTopology::TriangleStrip, pipeline);
+        pipelines.insert("RESERVED_TRIANGLE_STRIP".to_string(), pipeline);
 
         let (pipeline, _) = Self::create_pipeline(
             queue.device().clone(),
             render_pass.clone(),
             PrimitiveTopology::TriangleList,
+            vs.clone(), fs.clone()
         );
-        pipelines.insert(PrimitiveTopology::TriangleList, pipeline);
+        pipelines.insert("RESERVED_TRIANGLE_LIST".to_string(), pipeline);
+
+        let (pipeline, subpass) = Self::create_tex_pipeline(
+            queue.device().clone(),
+            render_pass.clone(),
+            PrimitiveTopology::PointList,
+        );
+        pipelines.insert("RESERVED_POINT_LIST_TEX".to_string(), pipeline);
+
+        let (pipeline, _) = Self::create_tex_pipeline(
+            queue.device().clone(),
+            render_pass.clone(),
+            PrimitiveTopology::LineList,
+        );
+        pipelines.insert("RESERVED_LINE_LIST_TEX".to_string(), pipeline);
+
+        let (pipeline, _) = Self::create_tex_pipeline(
+            queue.device().clone(),
+            render_pass.clone(),
+            PrimitiveTopology::LineStrip,
+        );
+        pipelines.insert("RESERVED_LINE_STRIP_TEX".to_string(), pipeline);
+
+        let (pipeline, _) = Self::create_tex_pipeline(
+            queue.device().clone(),
+            render_pass.clone(),
+            PrimitiveTopology::TriangleStrip,
+        );
+        pipelines.insert("RESERVED_TRIANGLE_STRIP_TEX".to_string(), pipeline);
+
+        let (pipeline, _) = Self::create_tex_pipeline(
+            queue.device().clone(),
+            render_pass.clone(),
+            PrimitiveTopology::TriangleList,
+        );
+        pipelines.insert("RESERVED_TRIANGLE_LIST_TEX".to_string(), pipeline);
 
         let command_buffer_allocator =
             StandardCommandBufferAllocator::new(queue.device().clone(), Default::default());
@@ -137,16 +180,27 @@ impl MSAAPipeline {
         }
     }
 
+    fn primitive_to_str(primitive: &PrimitiveTopology) -> &'static str {
+        match primitive {
+            PrimitiveTopology::PointList => "RESERVED_POINT_LIST",
+            PrimitiveTopology::LineList => "RESERVED_LINE_LIST",
+            PrimitiveTopology::LineStrip => "RESERVED_LINE_LIST",
+            PrimitiveTopology::TriangleList => "RESERVED_TRIANGLE_LIST",
+            PrimitiveTopology::TriangleStrip => "RESERVED_TRIANGLE_LIST",
+            _ => "",
+        }
+    }
+
     pub fn get_current_pipeline(&self) -> Arc<GraphicsPipeline> {
-        if let Some(pipeline) = self.pipelines.get(&self.current_primitive) {
+        if let Some(pipeline) = self.pipelines.get(Self::primitive_to_str(&self.current_primitive)) {
             return pipeline.clone();
         } else {
             panic!("Couldn't get pipeline");
         }
     }
 
-    pub fn get_specific_pipeline(&self, mode: PrimitiveTopology) -> Arc<GraphicsPipeline> {
-        if let Some(pipeline) = self.pipelines.get(&mode) {
+    pub fn get_specific_pipeline(&self, primitive: &String) -> Arc<GraphicsPipeline> {
+        if let Some(pipeline) = self.pipelines.get(primitive) {
             return pipeline.clone();
         } else {
             panic!("Couldn't get pipeline");
@@ -192,6 +246,38 @@ impl MSAAPipeline {
         .unwrap()
     }
 
+    fn create_tex_render_pass(
+        device: Arc<Device>,
+        format: Format,
+        samples: SampleCount,
+    ) -> Arc<RenderPass> {
+        vulkano::single_pass_renderpass!(
+        device,
+        attachments: {
+            intermediary: {
+                load: Clear,
+                store: DontCare,
+                format: format,
+                samples: samples,
+            },
+
+            color: {
+                load: DontCare,
+                store: Store,
+                format: format,
+                samples: 1,
+            }
+
+        },
+        pass: {
+            color: [intermediary],
+            depth_stencil: {},
+            resolve: [color],
+        }
+        )
+        .unwrap()
+    }
+
     pub fn gui_pass(&self) -> Subpass {
         self.subpass.clone()
     }
@@ -200,15 +286,42 @@ impl MSAAPipeline {
         device: Arc<Device>,
         render_pass: Arc<RenderPass>,
         topology: PrimitiveTopology,
+        vertex_module: Arc<ShaderModule>,
+        frag_module: Arc<ShaderModule>,
     ) -> (Arc<GraphicsPipeline>, Subpass) {
-        let vs = vs::load(device.clone()).expect("failed to create shader module");
-        let fs = fs::load(device.clone()).expect("failed to create shader module");
-
         let subpass = Subpass::from(render_pass, 0).unwrap();
 
         (
             GraphicsPipeline::start()
                 .vertex_input_state(BuffersDefinition::new().vertex::<types::Vertex>())
+                .vertex_shader(vertex_module.entry_point("main").unwrap(), ())
+                .input_assembly_state(InputAssemblyState::new().topology(topology))
+                .fragment_shader(frag_module.entry_point("main").unwrap(), ())
+                .viewport_state(ViewportState::viewport_dynamic_scissor_irrelevant())
+                .render_pass(subpass.clone())
+                .multisample_state(MultisampleState {
+                    rasterization_samples: subpass.num_samples().unwrap(),
+                    ..Default::default()
+                })
+                .build(device)
+                .unwrap(),
+            subpass,
+        )
+    }
+
+    fn create_tex_pipeline(
+        device: Arc<Device>,
+        render_pass: Arc<RenderPass>,
+        topology: PrimitiveTopology,
+        ) -> (Arc<GraphicsPipeline>, Subpass) {
+        let subpass = Subpass::from(render_pass, 0).unwrap();
+
+        let vs = vs_tex::load(device.clone()).expect("failed to load shader module");
+        let fs = fs_tex::load(device.clone()).expect("failed to load shader module");
+
+        (
+            GraphicsPipeline::start()
+                .vertex_input_state(BuffersDefinition::new().vertex::<types::TextureVertex>())
                 .vertex_shader(vs.entry_point("main").unwrap(), ())
                 .input_assembly_state(InputAssemblyState::new().topology(topology))
                 .fragment_shader(fs.entry_point("main").unwrap(), ())
@@ -387,26 +500,12 @@ impl MSAAPipeline {
             )
             .expect("failed to create buffer");
             let ubo_matrix = model.generate_mvp_mats(vk_dimensions);
-            let pool = DescriptorPoolCreateInfo {
-                ..Default::default()
-            };
-            let desc_set_layout_binding = DescriptorSetLayoutBinding {
-                descriptor_type: vulkano::descriptor_set::layout::DescriptorType::UniformBuffer,
-                descriptor_count: 2,
-                variable_descriptor_count: false,
-                stages: ShaderStages { vertex: true, fragment: true, ..Default::default()},
-                immutable_samplers: [].to_vec(),
-                _ne: pool._ne,
-            };
-
-            let mut bind = BTreeMap::new();
-            bind.insert(0u32, desc_set_layout_binding);
 
             let unibuffer = CpuAccessibleBuffer::from_data(
                 &self.allocator,
                 BufferUsage {
                     uniform_buffer: true,
-                    ..Default::default()
+                    ..BufferUsage::empty()
                 },
                 false,
                 [ubo_matrix],
@@ -414,9 +513,10 @@ impl MSAAPipeline {
             .unwrap();
             let desc_alloca = StandardDescriptorSetAllocator::new(self.queue.device().clone());
 
+
             let desc_set = PersistentDescriptorSet::new(
                 &desc_alloca,
-                self.get_current_pipeline().layout().set_layouts().get(0).unwrap().clone(),
+                self.get_specific_pipeline(&"RESERVED_TRIANGLE_LIST_TEX".to_string()).layout().set_layouts().get(0).unwrap().clone(),
                 [
                 WriteDescriptorSet::buffer(0, unibuffer.clone()),
                 WriteDescriptorSet::image_view_sampler(1,
@@ -425,7 +525,7 @@ impl MSAAPipeline {
             )
             .unwrap();
             builder
-                .bind_pipeline_graphics(self.get_specific_pipeline(model.topology).clone())
+                .bind_pipeline_graphics(self.get_specific_pipeline(&"RESERVED_TRIANGLE_LIST_TEX".to_string()).clone())
                 .set_viewport(
                     0,
                     vec![Viewport {
@@ -438,7 +538,7 @@ impl MSAAPipeline {
                 .bind_index_buffer(index_buffer.clone())
                 .bind_descriptor_sets(
                     vulkano::pipeline::PipelineBindPoint::Graphics,
-                    self.get_current_pipeline().layout().clone(),
+                    self.get_specific_pipeline(&"RESERVED_TRIANGLE_LIST_TEX".to_string()).layout().clone(),
                     0,
                     desc_set.clone(),
                 )
@@ -486,6 +586,44 @@ layout(binding = 0) uniform UniformBufferObject {
 } ubo;
 
 layout(location = 0) in vec3 position;
+layout(location = 1) in vec4 color;
+
+layout(location = 0) out vec4 frag_color;
+
+void main() {
+    gl_Position = ubo.proj * ubo.view * ubo.model * vec4(position, 1.0);
+    frag_color = color;
+}"
+    }
+}
+
+mod fs {
+    vulkano_shaders::shader! {
+        ty: "fragment",
+        src: "
+#version 450
+layout(location = 0) in vec4 color;
+layout(location = 0) out vec4 f_color;
+
+void main() {
+    f_color = color;
+}"
+    }
+}
+
+mod vs_tex {
+    vulkano_shaders::shader! {
+        ty: "vertex",
+        src: "
+#version 450
+
+layout(binding = 0) uniform UniformBufferObject {
+    mat4 model;
+    mat4 view;
+    mat4 proj;
+} ubo;
+
+layout(location = 0) in vec3 position;
 layout(location = 1) in vec2 uv;
 
 layout(location = 0) out vec2 tex_coords;
@@ -497,7 +635,7 @@ void main() {
     }
 }
 
-mod fs {
+mod fs_tex {
     vulkano_shaders::shader! {
         ty: "fragment",
         src: "
@@ -512,3 +650,4 @@ void main() {
 }"
     }
 }
+

@@ -3,7 +3,6 @@ use std::collections::HashMap;
 
 use crate::language::types::*;
 use crate::rendering_pipeline::MSAAPipeline;
-use vulkano::pipeline::graphics::input_assembly::PrimitiveTopology;
 
 pub struct Interpreter<'a> {
     pub bindings: HashMap<&'a str, InnerType>,
@@ -143,9 +142,15 @@ impl<'a> Interpreter<'a> {
                                 match &l.get(2) {
                                     Some(e2) => {
                                         if let Some(InnerType::Position(position)) = self.eval(&e1, pipeline) {
-                                            if let Some(InnerType::Position(uv)) = self.eval(&e2, pipeline) {
-                                                return Some(InnerType::Vertex(Vertex { position, uv: [uv[0], uv[1]] }));
-                                            }
+                                            return match self.eval(&e2, pipeline) {
+                                                Some(InnerType::Color(color)) =>
+                                                    Some(InnerType::Vertex(Vertex { position, color})),
+                                                Some(InnerType::Position(uv)) => {
+                                                    Some(InnerType::TextureVertex(
+                                                            TextureVertex { position , uv: [uv[0], uv[1]]}))
+                                                },
+                                                _ => None,
+                                            };
                                         }
                                         return None;
                                     },
@@ -158,14 +163,21 @@ impl<'a> Interpreter<'a> {
                     TvkObject::Atom("vertex-buffer") => {
                         if let Some(TvkObject::List(vertices)) = &l.get(1) {
                             let mut vb = Vec::new();
+                            let mut tvb = Vec::new();
                             for vertex in vertices {
-                                if let Some(InnerType::Vertex(v)) = self.eval(vertex, pipeline) {
-                                    vb.push(v);
-                                } else {
-                                    return None;
+                                match self.eval(vertex, pipeline) {
+                                    Some(InnerType::Vertex(v)) => vb.push(v),
+                                    Some(InnerType::TextureVertex(v)) => tvb.push(v),
+                                    _ => return None,
                                 }
                             }
-                            return Some(InnerType::VertexBuffer(vb));
+                            if !vb.is_empty() && tvb.is_empty() {
+                                return Some(InnerType::VertexBuffer(vb));
+                            } else if !tvb.is_empty() && vb.is_empty() {
+                                return Some(InnerType::TexVertexBuffer(tvb));
+                            } else {
+                                return None;
+                            }
                         }
                         return None;
                     },
@@ -304,22 +316,22 @@ impl<'a> Interpreter<'a> {
                         if l.len() == 2 {
                             return match &l[1] {
                                 TvkObject::Atom("default") => {
-                                    Some(InnerType::Topology(PrimitiveTopology::TriangleList))
+                                    Some(InnerType::Topology("RESERVED_TRIANGLE_LIST".to_string()))
                                 }
                                 TvkObject::Atom("triangle-list") => {
-                                    Some(InnerType::Topology(PrimitiveTopology::TriangleList))
+                                    Some(InnerType::Topology("RESERVED_TRIANGLE_LIST".to_string()))
                                 }
                                 TvkObject::Atom("triangle-strip") => {
-                                    Some(InnerType::Topology(PrimitiveTopology::TriangleStrip))
+                                    Some(InnerType::Topology("RESERVED_TRIANGLE_STRIP".to_string()))
                                 }
                                 TvkObject::Atom("line-list") => {
-                                    Some(InnerType::Topology(PrimitiveTopology::LineList))
+                                    Some(InnerType::Topology("RESERVED_LINE_LIST".to_string()))
                                 }
                                 TvkObject::Atom("line-strip") => {
-                                    Some(InnerType::Topology(PrimitiveTopology::LineStrip))
+                                    Some(InnerType::Topology("RESERVED_LINE_STRIP".to_string()))
                                 }
                                 TvkObject::Atom("point-list") => {
-                                    Some(InnerType::Topology(PrimitiveTopology::PointList))
+                                    Some(InnerType::Topology("RESERVED_POINT_LIST".to_string()))
                                 }
                                 _ => None,
                             };
@@ -329,10 +341,10 @@ impl<'a> Interpreter<'a> {
                     },
                     TvkObject::Atom("model") => {
                         if l.len() == 7 {
-                            if let Some(InnerType::VertexBuffer(vertices)) = self.eval(&l[1], pipeline) {
+                            if let Some(InnerType::TexVertexBuffer(vertices)) = self.eval(&l[1], pipeline) {
                                 if let Some(InnerType::IndexBuffer(indices)) = self.eval(&l[2], pipeline) {
-                                    if let Some(InnerType::Topology(topology)) = self.eval(&l[3], pipeline)
-                                    {
+                                    //if let Some(InnerType::Topology(topology)) = self.eval(&l[3], pipeline)
+                                    //{
                                         if let Some(InnerType::Transform(transforms)) =
                                             self.eval(&l[4], pipeline)
                                         {
@@ -345,7 +357,7 @@ impl<'a> Interpreter<'a> {
                                                     return Some(InnerType::Model(Model {
                                                         vertices,
                                                         indices,
-                                                        topology,
+                                                        topology: "RESERVED_TRIANGLE_LIST_TEX".to_string(),
                                                         transforms,
                                                         camera,
                                                         texture_data,
@@ -354,7 +366,7 @@ impl<'a> Interpreter<'a> {
                                                 };
                                             }
                                         }
-                                    }
+                                    //}
                                 }
                             }
                         } else {

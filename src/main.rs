@@ -126,16 +126,8 @@ const CODE: &str = r#"(config (primitive triangle-list)
   (position p3) (position (x 1.0) (y 1.0) (z 0.0))))
 (def v4 (vertex
   (position p4) (position (x 0.0) (y 1.0) (z 0.0))))
-(def v5 (vertex
-  (position p5) (color red)))
-(def v6 (vertex 
-  (position p6) (color green)))
-(def v7 (vertex
-  (position p7) (color blue)))
-(def v8 (vertex
-  (position p8) (color red)))
 (def vb (vertex-buffer
-  (v1 v2 v3 v4 v5 v6 v7 v8)))
+  (v1 v2 v3 v4)))
 (def ib (index-buffer
   (0 1 2
    0 2 3)))
