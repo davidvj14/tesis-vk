@@ -1,4 +1,3 @@
-#![allow(unreachable_code)]
 use std::collections::HashMap;
 
 use crate::language::types::*;
@@ -31,30 +30,7 @@ impl<'a> Interpreter<'a> {
                         return None;
                     },
                     TvkObject::Atom("position") => {
-                        if let (
-                            Some(TvkObject::List(x_list)),
-                            Some(TvkObject::List(y_list)),
-                            Some(TvkObject::List(z_list)),
-                            ) = (&l.get(1), &l.get(2), &l.get(3))
-                        {
-                            let mut vec3: [f32; 3] = [0.0, 0.0, 0.0];
-                            let mut i = 0;
-                            for list in [&x_list, &y_list, &z_list] {
-                                match list.get(1) {
-                                    Some(TvkObject::FloatLiteral(n)) => vec3[i] = *n,
-                                    Some(TvkObject::UIntLiteral(n)) => vec3[i] = *n as f32,
-                                    _ => return None,
-                                }
-                                i += 1;
-                            }
-                        return Some(InnerType::Position(vec3));
-                    } else {
-                        if let Some(e) = &l.get(1) {
-                            return self.eval(&e, pipeline);
-                        } else {
-                            return None;
-                        }
-                    }
+                        return self.eval_pos(l, pipeline);
                     },
                     TvkObject::Atom("vec3") => {
                         if let Some(TvkObject::List(list)) = &l.get(1) {
@@ -404,12 +380,53 @@ impl<'a> Interpreter<'a> {
                 }
                 return None;
             },
-            TvkObject::Atom(identifier) => {
-                return self.bindings.get(identifier).cloned();
+            TvkObject::Atom(_) => {
+                return self.eval_identifier(exprs);
             },
             TvkObject::FloatLiteral(f) => return Some(InnerType::Float(*f)),
             TvkObject::UIntLiteral(i) => return Some(InnerType::UInt(*i)),
             _ => return None,
+        }
+    }
+
+    fn eval_pos(
+        &mut self,
+        expr: &Vec<TvkObject<'a>>,
+        pipeline: &mut MSAAPipeline,
+        ) -> Option<InnerType> {
+        if let (
+            Some(TvkObject::List(x_list)),
+            Some(TvkObject::List(y_list)),
+            Some(TvkObject::List(z_list)),
+            ) = (&expr.get(1), &expr.get(2), &expr.get(3))
+        {
+            let mut vec3: [f32; 3] = [0.0, 0.0, 0.0];
+            let mut i = 0;
+            for list in [&x_list, &y_list, &z_list] {
+                match list.get(1) {
+                    Some(TvkObject::FloatLiteral(n)) => vec3[i] = *n,
+                    Some(TvkObject::UIntLiteral(n)) => vec3[i] = *n as f32,
+                    _ => return None,
+                }
+                i += 1;
+            }
+            return Some(InnerType::Position(vec3));
+        } else {
+            if let Some(e) = &expr.get(1) {
+                return self.eval(&e, pipeline);
+            } else {
+                return None;
+            }
+        }
+    }
+
+    fn eval_identifier(
+        &self,
+        expr: &TvkObject<'a>) -> Option<InnerType> {
+        if let TvkObject::Atom(identifier) = expr {
+            return self.bindings.get(identifier).cloned();
+        } else {
+            return None;
         }
     }
 }
