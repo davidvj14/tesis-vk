@@ -33,77 +33,13 @@ impl<'a> Interpreter<'a> {
                         return self.eval_pos(l, pipeline);
                     },
                     TvkObject::Atom("vec3") => {
-                        if let Some(TvkObject::List(list)) = &l.get(1) {
-                            let mut vec3 = [0.0, 0.0, 0.0];
-                            for i in 0..=2 {
-                                    if let Some(x) = &list.get(i) {
-                                    match self.eval(&x, pipeline) {
-                                        Some(InnerType::Float(n)) => vec3[i] = n,
-                                        Some(InnerType::UInt(n)) => vec3[i] = n as f32,
-                                        _ => return None,
-                                    }
-                                }
-                            }
-                            return Some(InnerType::Vec3(vec3));
-                        } else {
-                            if let Some(e) = &l.get(1) {
-                                return self.eval(&e, pipeline);
-                            } else {
-                                return None;
-                            }
-                        }
+                        return self.eval_vec3(l, pipeline);
                     },
                     TvkObject::Atom("center") => {
-                        if let (
-                            Some(TvkObject::List(x_list)),
-                            Some(TvkObject::List(y_list)),
-                            Some(TvkObject::List(z_list)),
-                            ) = (&l.get(1), &l.get(2), &l.get(3))
-                        {
-                            let mut vec3: [f32; 3] = [0.0, 0.0, 0.0];
-                            let mut i = 0;
-                            for list in [&x_list, &y_list, &z_list] {
-                                match list.get(1) {
-                                    Some(TvkObject::FloatLiteral(n)) => vec3[i] = *n,
-                                    Some(TvkObject::UIntLiteral(n)) => vec3[i] = *n as f32,
-                                    _ => return None,
-                                }
-                                i += 1;
-                            }
-                        return Some(InnerType::Position(vec3));
-                    } else {
-                        if let Some(e) = &l.get(1) {
-                            return self.eval(&e, pipeline);
-                        } else {
-                            return None;
-                        }
-                    }
+                        return self.eval_center(l, pipeline);
                     },
                     TvkObject::Atom("up") => {
-                        if let (
-                            Some(TvkObject::List(x_list)),
-                            Some(TvkObject::List(y_list)),
-                            Some(TvkObject::List(z_list)),
-                            ) = (&l.get(1), &l.get(2), &l.get(3))
-                        {
-                            let mut vec3: [f32; 3] = [0.0, 0.0, 0.0];
-                            let mut i = 0;
-                            for list in [&x_list, &y_list, &z_list] {
-                                match list.get(1) {
-                                    Some(TvkObject::FloatLiteral(n)) => vec3[i] = *n,
-                                    Some(TvkObject::UIntLiteral(n)) => vec3[i] = *n as f32,
-                                    _ => return None,
-                                }
-                                i += 1;
-                            }
-                        return Some(InnerType::Position(vec3));
-                    } else {
-                        if let Some(e) = &l.get(1) {
-                            return self.eval(&e, pipeline);
-                        } else {
-                            return None;
-                        }
-                    }
+                        return self.eval_up(l, pipeline);
                     },
                     TvkObject::Atom("color") => {
                         return match &l.get(1) {
@@ -418,6 +354,94 @@ impl<'a> Interpreter<'a> {
                 return None;
             }
         }
+    }
+    
+    fn eval_vec3(
+        &mut self,
+        expr: &Vec<TvkObject<'a>>,
+        pipeline: &mut MSAAPipeline
+        ) -> Option<InnerType> {
+        if let Some(TvkObject::List(list)) = &expr.get(1) {
+            let mut vec3 = [0.0, 0.0, 0.0];
+            for i in 0..=2 {
+                    if let Some(x) = &list.get(i) {
+                    match self.eval(&x, pipeline) {
+                        Some(InnerType::Float(n)) => vec3[i] = n,
+                        Some(InnerType::UInt(n)) => vec3[i] = n as f32,
+                        _ => return None,
+                    }
+                }
+            }
+            return Some(InnerType::Vec3(vec3));
+        } else {
+            if let Some(e) = &expr.get(1) {
+                return self.eval(&e, pipeline);
+            } else {
+                return None;
+            }
+        }
+    }
+
+    fn eval_center(
+        &mut self,
+        expr: &Vec<TvkObject<'a>>,
+        pipeline: &mut MSAAPipeline
+        ) -> Option<InnerType> {
+        if let (
+            Some(TvkObject::List(x_list)),
+            Some(TvkObject::List(y_list)),
+            Some(TvkObject::List(z_list)),
+            ) = (&expr.get(1), &expr.get(2), &expr.get(3))
+        {
+            let mut vec3: [f32; 3] = [0.0, 0.0, 0.0];
+            let mut i = 0;
+            for list in [&x_list, &y_list, &z_list] {
+                match list.get(1) {
+                    Some(TvkObject::FloatLiteral(n)) => vec3[i] = *n,
+                    Some(TvkObject::UIntLiteral(n)) => vec3[i] = *n as f32,
+                    _ => return None,
+                }
+                i += 1;
+            }
+            return Some(InnerType::Position(vec3));
+        } else {
+            if let Some(e) = &expr.get(1) {
+                return self.eval(&e, pipeline);
+            } else {
+                return None;
+            }
+        }
+    }
+
+    fn eval_up(
+        &mut self,
+        expr: &Vec<TvkObject<'a>>,
+        pipeline: &mut MSAAPipeline
+        ) -> Option<InnerType> {
+        if let (
+            Some(TvkObject::List(x_list)),
+            Some(TvkObject::List(y_list)),
+            Some(TvkObject::List(z_list)),
+            ) = (&expr.get(1), &expr.get(2), &expr.get(3))
+        {
+            let mut vec3: [f32; 3] = [0.0, 0.0, 0.0];
+            let mut i = 0;
+            for list in [&x_list, &y_list, &z_list] {
+                match list.get(1) {
+                    Some(TvkObject::FloatLiteral(n)) => vec3[i] = *n,
+                    Some(TvkObject::UIntLiteral(n)) => vec3[i] = *n as f32,
+                    _ => return None,
+                }
+                i += 1;
+            }
+        return Some(InnerType::Position(vec3));
+    } else {
+        if let Some(e) = &expr.get(1) {
+            return self.eval(&e, pipeline);
+        } else {
+            return None;
+        }
+    }
     }
 
     fn eval_identifier(
