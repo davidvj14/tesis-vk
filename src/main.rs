@@ -115,19 +115,35 @@ const CODE: &str = r#"(config (primitive triangle-list)
   (x 0.5) (y 0.5) (z 0.5)))
 (def p8 (position
   (x -0.5) (y 0.5) (z 0.5)))
+(def t1 (position
+  (x 0.0) (y 0.0) (z 0.0)))
+(def t2 (position
+  (x 1.0) (y 0.0) (z 0.0)))
+(def t3 (position
+  (x 1.0) (y 1.0) (z 0.0)))
+(def t4 (position
+  (x 0.0) (y 1.0) (z 0.0)))
 (def red (color #FF0000FF))
 (def green (color #00FF00FF))
 (def blue (color #0000FFFF))
 (def v1 (vertex
-  (position p1) (position (x 0.0) (y 0.0) (z 0.0))))
+  (position p1) (position t1)))
 (def v2 (vertex
-  (position p2) (position (x 1.0) (y 0.0) (z 0.0))))
+  (position p2) (position t2)))
 (def v3 (vertex
-  (position p3) (position (x 1.0) (y 1.0) (z 0.0))))
+  (position p3) (position t3)))
 (def v4 (vertex
-  (position p4) (position (x 0.0) (y 1.0) (z 0.0))))
+  (position p4) (position t4)))
+(def v5 (vertex
+  (position p5) (position t1)))
+(def v6 (vertex
+  (position p6) (position t2)))
+(def v7 (vertex
+  (position p7) (position t3)))
+(def v8 (vertex
+  (position p8) (position t4)))
 (def vb (vertex-buffer
-  (v1 v2 v3 v4)))
+  (v1 v2 v3 v4 v5 v6 v7 v8)))
 (def ib (index-buffer
   (0 1 2
    0 2 3)))
