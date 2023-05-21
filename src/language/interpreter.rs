@@ -142,8 +142,9 @@ impl<'a> Interpreter<'a> {
                     TvkObject::Atom("texture") => {
                         if l.len() == 2 {
                             if let TvkObject::Atom(path) = &l[1] {
-                                let (data, dims) = pipeline.load_texture_image(path);
-                                return Some(InnerType::Texture((data, dims)));
+                                if let Some((data, dims)) = pipeline.load_texture_image(path){
+                                    return Some(InnerType::Texture((data, dims)));
+                                }
                             }
                         }
                     }

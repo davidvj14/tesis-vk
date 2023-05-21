@@ -548,28 +548,33 @@ impl MSAAPipeline {
     }
 
 
-    pub fn load_texture_image(&self, path: &str) -> (Vec<u8>, ImageDimensions) {
-        let png_bytes = std::fs::read(path).expect("error loading texture");
-        let cursor = Cursor::new(png_bytes);
-        let decoder = png::Decoder::new(cursor);
-        let mut reader = decoder.read_info().unwrap();
-        let info = reader.info();
-        let image_dimensions = ImageDimensions::Dim2d {
-            width: info.width,
-            height: info.height,
-            array_layers: 1,
-        };
-        let mut image_data = Vec::new();
-        let depth: u32 = match info.bit_depth {
-            png::BitDepth::One => 1,
-            png::BitDepth::Two => 2,
-            png::BitDepth::Four => 4,
-            png::BitDepth::Eight => 8,
-            png::BitDepth::Sixteen => 16,
-        };
-        image_data.resize((info.width * info.height * depth) as usize, 0);
-        reader.next_frame(&mut image_data).unwrap();
-        (image_data, image_dimensions)
+    pub fn load_texture_image(&self, path: &str) -> Option<(Vec<u8>, ImageDimensions)> {
+        let png_bytes = std::fs::read(path);
+        if let Err(_) = png_bytes {
+            return None;
+        } else {
+            let png_bytes = png_bytes.unwrap();
+            let cursor = Cursor::new(png_bytes);
+            let decoder = png::Decoder::new(cursor);
+            let mut reader = decoder.read_info().unwrap();
+            let info = reader.info();
+            let image_dimensions = ImageDimensions::Dim2d {
+                width: info.width,
+                height: info.height,
+                array_layers: 1,
+            };
+            let mut image_data = Vec::new();
+            let depth: u32 = match info.bit_depth {
+                png::BitDepth::One => 1,
+                png::BitDepth::Two => 2,
+                png::BitDepth::Four => 4,
+                png::BitDepth::Eight => 8,
+                png::BitDepth::Sixteen => 16,
+            };
+            image_data.resize((info.width * info.height * depth) as usize, 0);
+            reader.next_frame(&mut image_data).unwrap();
+            Some((image_data, image_dimensions))
+        }
     }
 }
 
