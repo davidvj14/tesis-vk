@@ -82,59 +82,10 @@ impl<'a> Interpreter<'a> {
                         return self.eval_perspective(l, pipeline);
                     },
                     TvkObject::Atom("camera") => {
-                        if l.len() == 5 {
-                            if let Some(InnerType::Position(position)) = self.eval(&l[1], pipeline) {
-                                if let Some(InnerType::Position(center)) = self.eval(&l[2], pipeline) {
-                                    if let Some(InnerType::Position(up)) = self.eval(&l[3], pipeline) {
-                                        if let Some(InnerType::Perspective(perspective)) =
-                                            self.eval(&l[4], pipeline)
-                                        {
-                                            return Some(InnerType::Camera(Camera {
-                                                position,
-                                                center,
-                                                up,
-                                                perspective,
-                                            }));
-                                        }
-                                    }
-                                }
-                            }
-                        } else if l.len() == 2 {
-                            if let Some(InnerType::Camera(c)) = self.eval(&l[1], pipeline){
-                                return Some(InnerType::Camera(c));
-                            }
-                        } else {
-                            return None;
-                        }
+                        return self.eval_camera(l, pipeline);
                     },
                     TvkObject::Atom("transform") => {
-                        if l.len() == 4 {
-                            if let Some(InnerType::Vec3(translate)) = self.eval(&l[1], pipeline) {
-                                if let Some(InnerType::Vec3(scale)) = self.eval(&l[2], pipeline) {
-                                    if let Some(InnerType::Rotate(rotate)) = self.eval(&l[3], pipeline) {
-                                        return Some(InnerType::Transform(Transform {
-                                            translate,
-                                            scale,
-                                            rotate,
-                                        }));
-                                    }
-                                }
-                            } else if let TvkObject::Atom("default") = &l[1] {
-                                return Some(InnerType::Transform(Transform::default()));
-                            }
-                            return self.eval(&l[1], pipeline);
-                        } else if l.len() == 2 {
-                            match &l[1] {
-                                TvkObject::Atom("default") =>
-                                    return Some(InnerType::Transform(Transform::default())),
-                                TvkObject::Atom(ident) => {
-                                    if let Some(InnerType::Transform(t)) = self.bindings.get(ident) {
-                                        return Some(InnerType::Transform(t.clone()));
-                                    }
-                                },
-                                _ => return None,
-                            }
-                        }
+                        return self.eval_transform(l, pipeline);
                     },
                     TvkObject::Atom("translate") => {
                         if l.len() == 2 {
@@ -164,65 +115,10 @@ impl<'a> Interpreter<'a> {
                         }
                     },
                     TvkObject::Atom("topology") => {
-                        if l.len() == 2 {
-                            return match &l[1] {
-                                TvkObject::Atom("default") => {
-                                    Some(InnerType::Topology("RESERVED_TRIANGLE_LIST".to_string()))
-                                }
-                                TvkObject::Atom("triangle-list") => {
-                                    Some(InnerType::Topology("RESERVED_TRIANGLE_LIST".to_string()))
-                                }
-                                TvkObject::Atom("triangle-strip") => {
-                                    Some(InnerType::Topology("RESERVED_TRIANGLE_STRIP".to_string()))
-                                }
-                                TvkObject::Atom("line-list") => {
-                                    Some(InnerType::Topology("RESERVED_LINE_LIST".to_string()))
-                                }
-                                TvkObject::Atom("line-strip") => {
-                                    Some(InnerType::Topology("RESERVED_LINE_STRIP".to_string()))
-                                }
-                                TvkObject::Atom("point-list") => {
-                                    Some(InnerType::Topology("RESERVED_POINT_LIST".to_string()))
-                                }
-                                _ => None,
-                            };
-                        } else {
-                            return None;
-                        }
+                        return self.eval_topology(l);
                     },
                     TvkObject::Atom("model") => {
-                        if l.len() == 7 {
-                            if let Some(InnerType::TexVertexBuffer(vertices)) = self.eval(&l[1], pipeline) {
-                                if let Some(InnerType::IndexBuffer(indices)) = self.eval(&l[2], pipeline) {
-                                    //if let Some(InnerType::Topology(topology)) = self.eval(&l[3], pipeline)
-                                    //{
-                                        if let Some(InnerType::Transform(transforms)) =
-                                            self.eval(&l[4], pipeline)
-                                        {
-                                            if let Some(InnerType::Camera(camera)) =
-                                                self.eval(&l[5], pipeline)
-                                            {
-                                                if let Some(InnerType::Texture(texture_data)) =
-                                                    self.eval(&l[6], pipeline)
-                                                {
-                                                    return Some(InnerType::Model(Model {
-                                                        vertices,
-                                                        indices,
-                                                        topology: "RESERVED_TRIANGLE_LIST_TEX".to_string(),
-                                                        transforms,
-                                                        camera,
-                                                        texture_data,
-                                                        texture: None,
-                                                }))
-                                                };
-                                            }
-                                        }
-                                    //}
-                                }
-                            }
-                        } else {
-                            return None;
-                        }
+                        return self.eval_model(l, pipeline);
                     },
                     TvkObject::Atom("draw") => {
                         if l.len() > 1 {
@@ -472,6 +368,136 @@ impl<'a> Interpreter<'a> {
             }
         } else if expr.len() == 2 {
             return self.eval(&expr[1], pipeline);
+        }
+        return None;
+    }
+
+    fn eval_camera(
+        &mut self,
+        expr: &Vec<TvkObject<'a>>,
+        pipeline: &mut MSAAPipeline
+        ) -> Option<InnerType> {
+        if expr.len() == 5 {
+            if let Some(InnerType::Position(position)) = self.eval(&expr[1], pipeline) {
+                if let Some(InnerType::Position(center)) = self.eval(&expr[2], pipeline) {
+                    if let Some(InnerType::Position(up)) = self.eval(&expr[3], pipeline) {
+                        if let Some(InnerType::Perspective(perspective)) =
+                            self.eval(&expr[4], pipeline)
+                        {
+                            return Some(InnerType::Camera(Camera {
+                                position,
+                                center,
+                                up,
+                                perspective,
+                            }));
+                        }
+                    }
+                }
+            }
+        } else if expr.len() == 2 {
+            if let Some(InnerType::Camera(c)) = self.eval(&expr[1], pipeline){
+                return Some(InnerType::Camera(c));
+            }
+        }
+        return None;
+    }
+
+    fn eval_transform(
+        &mut self,
+        expr: &Vec<TvkObject<'a>>,
+        pipeline: &mut MSAAPipeline
+        ) -> Option<InnerType> {
+        if expr.len() == 4 {
+            if let Some(InnerType::Vec3(translate)) = self.eval(&expr[1], pipeline) {
+                if let Some(InnerType::Vec3(scale)) = self.eval(&expr[2], pipeline) {
+                    if let Some(InnerType::Rotate(rotate)) = self.eval(&expr[3], pipeline) {
+                        return Some(InnerType::Transform(Transform {
+                            translate,
+                            scale,
+                            rotate,
+                        }));
+                    }
+                }
+            } else if let TvkObject::Atom("default") = &expr[1] {
+                return Some(InnerType::Transform(Transform::default()));
+            }
+            return self.eval(&expr[1], pipeline);
+        } else if expr.len() == 2 {
+            match &expr[1] {
+                TvkObject::Atom("default") =>
+                    return Some(InnerType::Transform(Transform::default())),
+                TvkObject::Atom(ident) => {
+                    if let Some(InnerType::Transform(t)) = self.bindings.get(ident) {
+                        return Some(InnerType::Transform(t.clone()));
+                    }
+                },
+                _ => return None,
+            }
+        }
+        return None;
+    }
+    
+    fn eval_topology(
+        &mut self,
+        expr: &Vec<TvkObject<'a>>,
+        ) -> Option<InnerType> {
+        if expr.len() == 2 {
+            return match &expr[1] {
+                TvkObject::Atom("default") => {
+                    Some(InnerType::Topology("RESERVED_TRIANGLE_LIST".to_string()))
+                }
+                TvkObject::Atom("triangle-list") => {
+                    Some(InnerType::Topology("RESERVED_TRIANGLE_LIST".to_string()))
+                }
+                TvkObject::Atom("triangle-strip") => {
+                    Some(InnerType::Topology("RESERVED_TRIANGLE_STRIP".to_string()))
+                }
+                TvkObject::Atom("line-list") => {
+                    Some(InnerType::Topology("RESERVED_LINE_LIST".to_string()))
+                }
+                TvkObject::Atom("line-strip") => {
+                    Some(InnerType::Topology("RESERVED_LINE_STRIP".to_string()))
+                }
+                TvkObject::Atom("point-list") => {
+                    Some(InnerType::Topology("RESERVED_POINT_LIST".to_string()))
+                }
+                _ => None,
+            };
+        } else {
+            return None;
+        }
+    }
+
+    fn eval_model(
+        &mut self,
+        expr: &Vec<TvkObject<'a>>,
+        pipeline: &mut MSAAPipeline
+        ) -> Option<InnerType> {
+        if expr.len() == 7 {
+            if let Some(InnerType::TexVertexBuffer(vertices)) = self.eval(&expr[1], pipeline) {
+                if let Some(InnerType::IndexBuffer(indices)) = self.eval(&expr[2], pipeline) {
+                    if let Some(InnerType::Topology(topology)) = self.eval(&expr[3], pipeline) {
+                        if let Some(InnerType::Transform(transforms)) =
+                            self.eval(&expr[4], pipeline) {
+                                if let Some(InnerType::Camera(camera)) =
+                                    self.eval(&expr[5], pipeline) {
+                                        if let Some(InnerType::Texture(texture_data)) =
+                                            self.eval(&expr[6], pipeline) {
+                                                return Some(InnerType::Model(Model {
+                                                    vertices,
+                                                    indices,
+                                                    topology: "RESERVED_TRIANGLE_LIST_TEX".to_string(),
+                                                    transforms,
+                                                    camera,
+                                                    texture_data,
+                                                    texture: None,
+                                                }))
+                                            };
+                                    }
+                            }
+                    }
+                }
+            }
         }
         return None;
     }
