@@ -49,28 +49,7 @@ impl<'a> Interpreter<'a> {
                         }
                     },
                     TvkObject::Atom("vertex") => {
-                        match &l.get(1) {
-                            Some(e1) => {
-                                match &l.get(2) {
-                                    Some(e2) => {
-                                        if let Some(InnerType::Position(position)) = self.eval(&e1, pipeline) {
-                                            return match self.eval(&e2, pipeline) {
-                                                Some(InnerType::Color(color)) =>
-                                                    Some(InnerType::Vertex(Vertex { position, color})),
-                                                Some(InnerType::Position(uv)) => {
-                                                    Some(InnerType::TextureVertex(
-                                                            TextureVertex { position , uv: [uv[0], uv[1]]}))
-                                                },
-                                                _ => None,
-                                            };
-                                        }
-                                        return None;
-                                    },
-                                    _ => return None,
-                                }
-                            },
-                            _ => return None,
-                        }
+                        return self.eval_vertex(l, pipeline);
                     },
                     TvkObject::Atom("vertex-buffer") => {
                         if let Some(TvkObject::List(vertices)) = &l.get(1) {
@@ -434,14 +413,43 @@ impl<'a> Interpreter<'a> {
                 }
                 i += 1;
             }
-        return Some(InnerType::Position(vec3));
-    } else {
-        if let Some(e) = &expr.get(1) {
-            return self.eval(&e, pipeline);
+            return Some(InnerType::Position(vec3));
         } else {
-            return None;
+            if let Some(e) = &expr.get(1) {
+                return self.eval(&e, pipeline);
+            } else {
+                return None;
+            }
         }
     }
+
+    fn eval_vertex(
+        &mut self,
+        expr: &Vec<TvkObject<'a>>,
+        pipeline: &mut MSAAPipeline
+        ) -> Option<InnerType> {
+        match &expr.get(1) {
+            Some(e1) => {
+                match &expr.get(2) {
+                    Some(e2) => {
+                        if let Some(InnerType::Position(position)) = self.eval(&e1, pipeline) {
+                            return match self.eval(&e2, pipeline) {
+                                Some(InnerType::Color(color)) =>
+                                    Some(InnerType::Vertex(Vertex { position, color})),
+                                Some(InnerType::Position(uv)) => {
+                                    Some(InnerType::TextureVertex(
+                                            TextureVertex { position , uv: [uv[0], uv[1]]}))
+                                },
+                                _ => None,
+                            };
+                        }
+                        return None;
+                    },
+                    _ => return None,
+                }
+            },
+            _ => return None,
+        }
     }
 
     fn eval_identifier(
