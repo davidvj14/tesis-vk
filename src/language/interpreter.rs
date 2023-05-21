@@ -52,39 +52,10 @@ impl<'a> Interpreter<'a> {
                         return self.eval_vertex(l, pipeline);
                     },
                     TvkObject::Atom("vertex-buffer") => {
-                        if let Some(TvkObject::List(vertices)) = &l.get(1) {
-                            let mut vb = Vec::new();
-                            let mut tvb = Vec::new();
-                            for vertex in vertices {
-                                match self.eval(vertex, pipeline) {
-                                    Some(InnerType::Vertex(v)) => vb.push(v),
-                                    Some(InnerType::TextureVertex(v)) => tvb.push(v),
-                                    _ => return None,
-                                }
-                            }
-                            if !vb.is_empty() && tvb.is_empty() {
-                                return Some(InnerType::VertexBuffer(vb));
-                            } else if !tvb.is_empty() && vb.is_empty() {
-                                return Some(InnerType::TexVertexBuffer(tvb));
-                            } else {
-                                return None;
-                            }
-                        }
-                        return None;
+                        return self.eval_vertex_buffer(l, pipeline);
                     },
                     TvkObject::Atom("index-buffer") => {
-                        if let Some(TvkObject::List(indices)) = &l.get(1) {
-                            let mut ib = Vec::new();
-                            for index in indices {
-                                if let Some(InnerType::UInt(i)) = self.eval(index, pipeline) {
-                                    ib.push(i);
-                                } else {
-                                    return None;
-                                }
-                            }
-                            return Some(InnerType::IndexBuffer(ib));
-                        }
-                        return None;
+                        return self.eval_index_buffer(l, pipeline);
                     },
                     TvkObject::Atom("fovy") => {
                         if let Some(e) = &l.get(1) {
@@ -108,18 +79,7 @@ impl<'a> Interpreter<'a> {
                         }
                     },
                     TvkObject::Atom("perspective") => {
-                        if l.len() == 4 {
-                            if let Some(InnerType::Float(fovy)) = self.eval(&l[1], pipeline) {
-                                if let Some(InnerType::Float(z_near)) = self.eval(&l[2], pipeline) {
-                                    if let Some(InnerType::Float(z_far)) = self.eval(&l[3], pipeline) {
-                                        return Some(InnerType::Perspective([fovy, z_near, z_far]));
-                                    }
-                                }
-                            }
-                        } else if l.len() == 2 {
-                            return self.eval(&l[1], pipeline);
-                        }
-                        return None;
+                        return self.eval_perspective(l, pipeline);
                     },
                     TvkObject::Atom("camera") => {
                         if l.len() == 5 {
@@ -450,6 +410,70 @@ impl<'a> Interpreter<'a> {
             },
             _ => return None,
         }
+    }
+
+    fn eval_vertex_buffer(
+        &mut self,
+        expr: &Vec<TvkObject<'a>>,
+        pipeline: &mut MSAAPipeline
+        ) -> Option<InnerType> {
+        if let Some(TvkObject::List(vertices)) = &expr.get(1) {
+            let mut vb = Vec::new();
+            let mut tvb = Vec::new();
+            for vertex in vertices {
+                match self.eval(vertex, pipeline) {
+                    Some(InnerType::Vertex(v)) => vb.push(v),
+                    Some(InnerType::TextureVertex(v)) => tvb.push(v),
+                    _ => return None,
+                }
+            }
+            if !vb.is_empty() && tvb.is_empty() {
+                return Some(InnerType::VertexBuffer(vb));
+            } else if !tvb.is_empty() && vb.is_empty() {
+                return Some(InnerType::TexVertexBuffer(tvb));
+            } else {
+                return None;
+            }
+        }
+        return None;
+    }
+
+    fn eval_index_buffer(
+        &mut self,
+        expr: &Vec<TvkObject<'a>>,
+        pipeline: &mut MSAAPipeline,
+        ) -> Option<InnerType> {
+        if let Some(TvkObject::List(indices)) = &expr.get(1) {
+            let mut ib = Vec::new();
+            for index in indices {
+                if let Some(InnerType::UInt(i)) = self.eval(index, pipeline) {
+                    ib.push(i);
+                } else {
+                    return None;
+                }
+            }
+            return Some(InnerType::IndexBuffer(ib));
+        }
+        return None;
+    }
+
+    fn eval_perspective(
+        &mut self,
+        expr: &Vec<TvkObject<'a>>,
+        pipeline: &mut MSAAPipeline
+        ) -> Option<InnerType> {
+        if expr.len() == 4 {
+            if let Some(InnerType::Float(fovy)) = self.eval(&expr[1], pipeline) {
+                if let Some(InnerType::Float(z_near)) = self.eval(&expr[2], pipeline) {
+                    if let Some(InnerType::Float(z_far)) = self.eval(&expr[3], pipeline) {
+                        return Some(InnerType::Perspective([fovy, z_near, z_far]));
+                    }
+                }
+            }
+        } else if expr.len() == 2 {
+            return self.eval(&expr[1], pipeline);
+        }
+        return None;
     }
 
     fn eval_identifier(
