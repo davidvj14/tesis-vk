@@ -135,24 +135,30 @@ const CODE: &str = r#"(config (primitive triangle-list)
 (def v4 (vertex
   (position p4) (position t4)))
 (def v5 (vertex
-  (position p5) (position t1)))
+  (position p5) (position t4)))
 (def v6 (vertex
-  (position p6) (position t2)))
+  (position p6) (position t3)))
 (def v7 (vertex
-  (position p7) (position t3)))
+  (position p7) (position t2)))
 (def v8 (vertex
-  (position p8) (position t4)))
+  (position p8) (position t1)))
 (def vb (vertex-buffer
   (v1 v2 v3 v4 v5 v6 v7 v8)))
 (def ib (index-buffer
   (0 1 2
-   0 2 3)))
+   0 2 3
+   0 1 4
+   1 4 5
+   2 3 7
+   2 6 7
+   6 7 4
+   4 5 6)))
 (def pers (perspective
   (fovy 0.75)
   (z-near 0.0001)
   (z-far 1000.0)))
 (def cam1 (camera
-  (position (x 2) (y 2) (z 2))
+  (position (x 3) (y 2) (z 2))
   (center (x 0.0) (y 0.0) (z 0.0))
   (up (x 0.0) (y 1.0) (z 0.0))
   (perspective pers)))
