@@ -115,14 +115,10 @@ const CODE: &str = r#"(config (primitive triangle-list)
   (x 0.5) (y 0.5) (z 0.5)))
 (def p8 (position
   (x -0.5) (y 0.5) (z 0.5)))
-(def t1 (position
-  (x 0.0) (y 0.0) (z 0.0)))
-(def t2 (position
-  (x 1.0) (y 0.0) (z 0.0)))
-(def t3 (position
-  (x 1.0) (y 1.0) (z 0.0)))
-(def t4 (position
-  (x 0.0) (y 1.0) (z 0.0)))
+(def t1 (uv (x 0.0) (y 0.0)))
+(def t2 (uv (x 1.0) (y 0.0)))
+(def t3 (uv (x 1.0) (y 1.0)))
+(def t4 (uv  (x 0.0) (y 1.0)))
 (def red (color #FF0000FF))
 (def green (color #00FF00FF))
 (def blue (color #0000FFFF))

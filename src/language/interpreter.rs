@@ -32,6 +32,9 @@ impl<'a> Interpreter<'a> {
                     TvkObject::Atom("position") => {
                         return self.eval_pos(l, pipeline);
                     },
+                    TvkObject::Atom("uv") => {
+                        return self.eval_uv(l, pipeline);
+                    },
                     TvkObject::Atom("vec3") => {
                         return self.eval_vec3(l, pipeline);
                     },
@@ -191,6 +194,36 @@ impl<'a> Interpreter<'a> {
             }
         }
     }
+
+    fn eval_uv(
+        &mut self,
+        expr: &Vec<TvkObject<'a>>,
+        pipeline: &mut MSAAPipeline
+        ) -> Option<InnerType> {
+        if let (
+            Some(TvkObject::List(x_list)),
+            Some(TvkObject::List(y_list)),
+            ) = (&expr.get(1), &expr.get(2))
+        {
+            let mut uv: [f32; 2] = [0.0, 0.0];
+            let mut i = 0;
+            for list in [&x_list, &y_list] {
+                match list.get(1) {
+                    Some(TvkObject::FloatLiteral(n)) => uv[i] = *n,
+                    Some(TvkObject::UIntLiteral(n)) => uv[i] = *n as f32,
+                    _ => return None,
+                }
+                i += 1;
+            }
+            return Some(InnerType::UV(uv));
+        } else {
+            if let Some(e) = &expr.get(1) {
+                return self.eval(&e, pipeline);
+            } else {
+                return None;
+            }
+        }
+    }
     
     fn eval_vec3(
         &mut self,
@@ -293,9 +326,9 @@ impl<'a> Interpreter<'a> {
                             return match self.eval(&e2, pipeline) {
                                 Some(InnerType::Color(color)) =>
                                     Some(InnerType::Vertex(Vertex { position, color})),
-                                Some(InnerType::Position(uv)) => {
+                                Some(InnerType::UV(uv)) => {
                                     Some(InnerType::TextureVertex(
-                                            TextureVertex { position , uv: [uv[0], uv[1]]}))
+                                            TextureVertex { position, uv }))
                                 },
                                 _ => None,
                             };

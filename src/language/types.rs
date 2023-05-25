@@ -146,6 +146,7 @@ pub enum InnerType {
     Float(f32),
     UInt(u32),
     Position(Position),
+    UV([f32; 2]),
     Rotate((Angle, Vec3)),
     Topology(String),
     Color(Color),
