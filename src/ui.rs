@@ -1,4 +1,5 @@
 use egui::{ScrollArea, TextEdit, TextStyle, Ui};
+use egui_extras::{TableBuilder, Column};
 use egui_winit_vulkano::{Gui, GuiConfig};
 use vulkano::device::Features;
 use vulkano::format::Format;
@@ -83,7 +84,7 @@ impl Application {
                     family: egui::FontFamily::Monospace,
                 };
                 let row_height = ui.fonts().row_height(&font);
-                let editor_height = ui.available_height() / 1.5;
+                let editor_height = ui.available_height() / 1.75;
                 let editor_rows = editor_height / row_height;
                 let editor = TextEdit::multiline(code)
                     .font(font)
@@ -91,13 +92,13 @@ impl Application {
                     .desired_rows(editor_rows as usize);
                 ui.set_min_width(app_info.min_width);
                 ScrollArea::vertical()
-                    .max_height(ui.available_height() / 1.5)
+                    .max_height(ui.available_height() / 1.75)
                     .show_rows(ui, row_height, editor_rows as usize - 5, |ui, _| {
                         ui.set_height(ui.available_height());
                         *changed = ui.add(editor).changed();
                     });
                 ui.separator();
-                Self::lower_panel(console, ui);
+                Self::lower_panel(app_info.panel_width * 0.86, ui);
                 if app_info.panel_width != ui.available_width() + 20.0 {
                     app_info.panel_width = ui.available_width() + 20.0;
                     *vk_ratio = 1.0
@@ -107,22 +108,34 @@ impl Application {
             });
     }
 
-    fn lower_panel(console: &mut String, ui: &mut Ui) {
+    fn lower_panel(width: f32, ui: &mut Ui) {
         ui.columns(2, |columns| {
-            columns[0].set_height(columns[0].available_height());
-            columns[0].add(
-                TextEdit::multiline(console)
-                    .font(TextStyle::Monospace)
-                    .desired_rows(columns[0].available_height() as usize / 14),
-            );
-            columns[1].set_height(columns[1].available_height());
-            columns[1].add(
-                TextEdit::multiline(&mut "err".to_string())
-                    .font(TextStyle::Monospace)
-                    .desired_rows(columns[1].available_height() as usize / 14),
-            );
+            columns[0].push_id(0, |ui|{
+                TableBuilder::new(ui)
+                    .column(Column::exact(width / 4.0).resizable(false))
+                    .column(Column::exact(width / 4.0).resizable(false))
+                    .header(16.0, |mut header| {
+                        header.col(|ui| {
+                            ui.heading("Name");
+                        });
+                        header.col(|ui| {
+                            ui.heading("Type");
+                        });
+                    })
+                .body(|mut body| {
+                    body.row(26.0, |mut row| {
+                        row.col(|ui| {
+                            if ui.button("object").clicked() {
+                                println!("object");
+                            }
+                        });
+                        row.col(|ui| {
+                            ui.label("NaN");
+                        });
+                    });
+                });
+            });
         });
-        ui.set_height(ui.available_height() / 2.0);
     }
 }
 
